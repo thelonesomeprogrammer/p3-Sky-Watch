@@ -1,55 +1,117 @@
-import cv2 as cv
-
 import numpy as np
 import cv2 as cv
+import enum as Enum
+import matplotlib.pyplot as plt
  
-img = cv.imread('Billed Data/01899.jpg')
-gray= cv.cvtColor(img,cv.COLOR_BGR2GRAY)
-rotated = cv.rotate(gray, cv.ROTATE_90_CLOCKWISE)
-blur = cv.GaussianBlur(gray,(3,3),0)
+src = cv.imread('Billed Data/01899.jpg', cv.IMREAD_GRAYSCALE)
 
-scale = 0.1
+class FeatureType(Enum.Enum):
+    SIFT = 0
+    ORB = 1
+    BRISK = 2
 
-resizedSrc = cv.resize(gray, (int(img.shape[1] * scale), int(img.shape[0] * scale)), interpolation = cv.INTER_AREA)
-resizedTransformed = cv.resize(blur, (int(img.shape[1] * scale), int(img.shape[0] * scale)), interpolation = cv.INTER_AREA)
+def getFeatures(img, featureType):
+    if featureType == FeatureType.SIFT:
+        return cv.SIFT_create(nfeatures=1000)
+    elif featureType == FeatureType.ORB:
+        return cv.ORB_create()
+    elif featureType == FeatureType.BRISK:
+        return cv.BRISK_create(thresh=60)
+    
+def getMatches(des1, des2, featureType):
+    bf = cv.BFMatcher()
 
-sift = cv.SIFT_create(nfeatures=1000)
+    if featureType == FeatureType.SIFT:
+        matches = bf.knnMatch(des1, des2, k=2)
+        good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
+        return good_matches
+    
+    elif featureType == FeatureType.ORB or featureType == FeatureType.BRISK:
+        matches = bf.knnMatch(des1, des2, k=2)
+        good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
+        return good_matches
+    
+def getKeypoints(kp1, kp2, scale):
+    for kp in kp1:
+        kp.size *= (1 * scale)
 
-kp1, des1 = sift.detectAndCompute(resizedSrc,None)
-kp2, des2 = sift.detectAndCompute(resizedTransformed,None)
- 
-bf = cv.BFMatcher()
+    for kp in kp2:
+        kp.size *= (1 * scale)
+        
+    return kp1, kp2
 
-# OrbMatches = bf.match(des1,des2)
-SiftMatches = knnMatch = bf.knnMatch(des1,des2, k=2)
+def getResizedImages(img, scale):
+    return cv.resize(img, (int(img.shape[1] * scale), int(img.shape[0] * scale)), interpolation = cv.INTER_AREA)
 
-src=cv.drawKeypoints(gray,kp1,img, flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-srcTransformed=cv.drawKeypoints(blur,kp2,blur, flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+def getKeypointImages(img, kp1, kp2):
+    return cv.drawKeypoints(img, kp1, None, flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS), cv.drawKeypoints(img, kp2, None, flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-#print number of keypoints
+def getGoodMatches(matches, featureType):
+    if featureType == FeatureType.ORB:
+        good = []
+        for m,n in matches:
+            if m.distance < 0.75*n.distance:
+                good.append([m])
+        return good
+    # elif featureType == FeatureType.SIFT or featureType == FeatureType.SURF or featureType == FeatureType.AKAZE:
+    #     for match in matches:
+    #         if match.distance < 0.75:
+    #             good.append(match)
+    # return good
 
-#Ratio Test:
+# FeatureType = FeatureType.SIFT
 
-good = []
-for m,n in SiftMatches:
-    if m.distance < 0.75*n.distance:
-        good.append([m])
+pltArray = np.empty((3,20))
 
-print(f'Number of Keypoints (Image 1): {len(kp1)}')
-print(f'Number of Keypoints (Image 2): {len(kp2)}')
-print(f'Number of Matches: {len(good)}')
+for i in range(3):
 
-#resize but keep aspect ratio
+    FeatureTypeInstance = FeatureType(i)
+    scale = 0.1
 
-resizedSrc = cv.resize(src, (int(img.shape[1] * 0.3), int(img.shape[0] * 0.3)), interpolation = cv.INTER_AREA)
-resizedTransformed = cv.resize(srcTransformed, (int(img.shape[1] * 0.3), int(img.shape[0] * 0.3)), interpolation = cv.INTER_AREA)
+    for j in range(1, 20):
 
-cv.imwrite('sift_keypoints_src.jpg',resizedSrc)
-cv.imwrite('sift_keypoints_transformed.jpg',resizedTransformed)
+        scale = round(scale + 0.1, 1)
 
-cv.imshow('sift_keypoints_src.jpg', resizedSrc)
-cv.imshow('sift_keypoints_transformed.jpg', resizedTransformed)
+        img = cv.imread(f'Billed Data/01899.jpg', cv.IMREAD_GRAYSCALE)
 
-cv.waitKey(0)
+        resizedSrc = getResizedImages(img, scale)
 
-cv.destroyAllWindows()
+        algo = getFeatures(resizedSrc, FeatureTypeInstance)
+    
+        if j == 1:
+            kp1, des1 = algo.detectAndCompute(img, None)
+
+        kp2, des2 = algo.detectAndCompute(resizedSrc, None)
+
+        kp1, kp2 = getKeypoints(kp1, kp2, scale)
+
+        matches = getMatches(des1, des2, FeatureTypeInstance)
+
+        MatchRate = len(matches)/len(kp1) * 100
+
+        # good = getGoodMatches(matches, FeatureTypeInstance)
+
+        pltArray[i,j] = MatchRate
+
+        print(f'Number of Keypoints (Image 1): {len(kp1)}')
+        print(f'Number of Keypoints (Image 2): {len(kp2)}')
+        print(f'scale: {scale}')
+        print(f'Number of Matches: {len(matches)}')
+
+        srcKeypoints, srcTransformedKeypoints = getKeypointImages(resizedSrc, kp1, kp2)
+
+x = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2])
+y1 = pltArray[0]
+y2 = pltArray[1]
+y3 = pltArray[2]
+
+plt.plot(x, y1)
+plt.plot(x, y2)
+plt.plot(x, y3)
+plt.legend()
+plt.xticks(x[::2])
+plt.xlabel('Scale')
+plt.ylabel('Match Rate')
+plt.title('Match Rate vs Scale')
+plt.show()
+
