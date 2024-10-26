@@ -2,10 +2,6 @@ import numpy as np
 import cv2 as cv
 import enum as Enum
 import matplotlib.pyplot as plt
- 
-img = cv.imread('Billed Data/04345.jpg', cv.IMREAD_GRAYSCALE)
-
-print(img.shape)
 
 class FeatureType(Enum.Enum):
     SIFT = 0
@@ -68,92 +64,104 @@ def getGoodMatches(matches, featureType):
     #             good.append(match)
     # return good
 
-# FeatureType = FeatureType.SIFT
-
-TestType = 'RotationTest'
-
-if TestType == 'ScaleTest':
-    Iterations = 20
-elif TestType == 'RotationTest':
-    Iterations = 36
-
-pltArray = np.empty((3,Iterations))
-
-for i in range(3):
-
-    FeatureTypeInstance = FeatureType(i)
-
-    angle = 0
-
-    if TestType == 'ScaleTest':
-        scale = 0.1
-    else:
-        scale = 1
-
-    for j in range(1, Iterations):
-
-        if TestType == 'ScaleTest':
-            scale = round(scale + 0.1, 1)
-            TransformedSrc = getResizedImages(img, scale)
-        elif TestType == 'RotationTest':
-            angle = angle + 10
-            TransformedSrc = getRotatedImages(img, angle)
-
-        algo = getFeatures(TransformedSrc, FeatureTypeInstance)
+def runFeatureExtractionTest(TestType, img):
     
-        if j == 1:
+# Define number of iterations based on test type
+    if TestType == 'ScaleTest':
+        Iterations = 20
+    elif TestType == 'RotationTest':
+        Iterations = 36
 
-            kp1, des1 = algo.detectAndCompute(img, None)
+    pltArray = np.empty((3, Iterations))
 
-            kp2, des2 = kp1, des1
-            matches = getMatches(des1, des2, FeatureTypeInstance)
-            MatchRate = len(matches) / len(kp1) * 100
-            pltArray[i, 0] = MatchRate 
+# Calculate match rate for each feature type: SIFT, ORB, BRISK
+    for i in range(3):
 
-        kp2, des2 = algo.detectAndCompute(TransformedSrc, None)
+        FeatureTypeInstance = FeatureType(i)
+        kp1, des1 = algorithm.detectAndCompute(img, None)
 
-        if des1.dtype != des2.dtype:
-            des1 = des1.astype(np.float32)
-            des2 = des2.astype(np.float32)
+        angle = 0
 
-        kp1, kp2 = getKeypoints(kp1, kp2, scale)
-
-        matches = getMatches(des1, des2, FeatureTypeInstance)
-
-        MatchRate = len(matches)/len(kp1) * 100
-
-        # good = getGoodMatches(matches, FeatureTypeInstance)
-
-        pltArray[i,j] = MatchRate
-
-        print(f'Number of Keypoints (Image 1): {len(kp1)}')
-        print(f'Number of Keypoints (Image 2): {len(kp2)}')
         if TestType == 'ScaleTest':
-            print(f'scale: {scale}')
-        elif TestType == 'RotationTest':
-            print(f'angle: {angle}')
-        print(f'Number of Matches: {len(matches)}')
+            scale = 0.1
+        else:
+            scale = 1
 
-        srcKeypoints, srcTransformedKeypoints = getKeypointImages(TransformedSrc, kp1, kp2)
+        for j in range(1, Iterations):
 
+            if TestType == 'ScaleTest':
+                scale = round(scale + 0.1, 1)
+                TransformedSrc = getResizedImages(img, scale)
+            elif TestType == 'RotationTest':
+                angle = angle + 10
+                TransformedSrc = getRotatedImages(img, angle)
 
-if TestType == 'ScaleTest':
-    x = np.arange(0.1, 2.1, 0.1)
-elif TestType == 'RotationTest':
-    x = np.arange(0, 360, 10)
+            algorithm = getFeatures(TransformedSrc, FeatureTypeInstance)
+        
+            if TestType == 'RotationTest':
 
-y1 = pltArray[0]
-y2 = pltArray[1]
-y3 = pltArray[2]
+                kp2, des2 = kp1, des1
+                matches = getMatches(des1, des2, FeatureTypeInstance)
+                MatchRate = len(matches) / len(kp1) * 100
+                pltArray[i, 0] = MatchRate 
 
-plt.plot(x, y1, label='SIFT')
-plt.plot(x, y2, label='ORB')
-plt.plot(x, y3, label='BRISK')
+            kp2, des2 = algorithm.detectAndCompute(TransformedSrc, None)
 
-plt.legend()
-plt.xticks(x[::2])
-plt.xlabel('Scale')
-plt.ylabel('Match Rate')
-plt.title('Match Rate vs Scale')
-plt.show()
+            if des1.dtype != des2.dtype:
+                des1 = des1.astype(np.float32)
+                des2 = des2.astype(np.float32)
 
+            # Rescale keypoints based on scale to match resized image
+            kp1, kp2 = getKeypoints(kp1, kp2, scale)
+
+            matches = getMatches(des1, des2, FeatureTypeInstance)
+
+            # Calculate match rate as percentage of keypoints matched
+            MatchRate = len(matches)/len(kp1) * 100
+
+            pltArray[i,j] = MatchRate
+
+            print(f'Number of Keypoints (Image 1): {len(kp1)}')
+            print(f'Number of Keypoints (Image 2): {len(kp2)}')
+            if TestType == 'ScaleTest':
+                print(f'scale: {scale}')
+            elif TestType == 'RotationTest':
+                print(f'angle: {angle}')
+            print(f'Number of Matches: {len(matches)}')
+
+            srcKeypoints, srcTransformedKeypoints = getKeypointImages(TransformedSrc, kp1, kp2)
+
+    return pltArray
+
+def plotMatchRate(pltArray, TestType):
+    if TestType == 'ScaleTest':
+        x = np.arange(0.1, 2.1, 0.1)
+    elif TestType == 'RotationTest':
+        x = np.arange(0, 360, 10)
+
+    y1 = pltArray[0]
+    y2 = pltArray[1]
+    y3 = pltArray[2]
+
+    plt.plot(x, y1, label='SIFT')
+    plt.plot(x, y2, label='ORB')
+    plt.plot(x, y3, label='BRISK')
+
+    plt.legend()
+    plt.xticks(x[::2])
+    plt.xlabel('Scale')
+    plt.ylabel('Match Rate')
+    plt.title('Match Rate vs Scale')
+    plt.show()
+
+def __main__():
+    img = cv.imread('Billed Data/04345.jpg', cv.IMREAD_GRAYSCALE)
+
+    # Define test type: ScaleTest or RotationTest
+    TestType = 'ScaleTest'
+
+    pltArray = runFeatureExtractionTest(TestType, img)
+
+    plotMatchRate(pltArray, TestType)
+
+__main__()
