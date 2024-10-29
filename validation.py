@@ -18,7 +18,7 @@ def load_csv_to_arr(file):
 data = load_csv_to_arr('./Billed Data/GNSS_data.csv')
 
 fake_Pred = [[data[0][0],data[0][3],data[0][4]]]
-fake_Target = [[data[0][0],data[3][3],data[3][4]]]
+fake_Target = [[data[0][0],data[438][3],data[438][4]]]
 
 
 def cal_dist(Pred, Target):
