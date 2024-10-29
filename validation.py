@@ -51,7 +51,6 @@ def validation(Pred, Targets):
     dist_list = np.asanyarray(cal_dist(Pred, Target))
     succeslist = np.where(dist_list <= 50)[0]
     print(dist_list)
-    print(succeslist)
     succesrate = len(succeslist) / len(dist_list) * 100
     meanerror = dist_list.mean()
     avg_hit = np.asanyarray(hit_deltas).mean()
