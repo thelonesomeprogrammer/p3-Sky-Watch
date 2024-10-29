@@ -65,3 +65,8 @@ fake_Pred = [[data[3][0],data[0][3],data[0][4]], [data[6][0],data[3][3],data[3][
 
 
 validation(fake_Pred,data)
+
+
+#hvor mange procent af predictions er under 50m (succesrate)
+#hvor ofte gætter vi (avg_hit)
+
