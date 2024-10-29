@@ -19,7 +19,7 @@ description=Write a description for your map.
 
 [HTML%20Area]
 Layout\size=@Size(393 96)
-Layout\visible=false
+Layout\visible=true
 Layout\anchor_pos=@Variant(\0\0\0\x1a\0\0\0\0\0\0\0\0?\xe0\0\0\0\0\0\0)
 Layout\anchor_halign=0
 Layout\anchor_valign=1
@@ -57,3 +57,7 @@ Layout\anchor_valign=2
 [Printer]
 orientation=1
 paper_size=0
+
+
+
+11
