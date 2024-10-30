@@ -17,9 +17,10 @@ image_points = np.array([
 ], dtype=np.float32)
 
 # Camera intrinsic parameters (example values)
+f=13.6
 camera_matrix = np.array([
-    [13.6, 0, 3840],
-    [0, 13.6, 2160],
+    [800, 0, 3840],
+    [0, 800, 2160],
     [0, 0, 1]
 ], dtype=np.float32)
 
@@ -27,27 +28,23 @@ camera_matrix = np.array([
 dist_coeffs = np.zeros(4)
 
 # Solve for rotation and translation vectors
-success, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
+success, R, T = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
  # Convert rotation vector to rotation matrix
-rotation_matrix, _ = cv2.Rodrigues(rvec)
+#rotation_matrix, _ = cv2.Rodrigues(rvec)
 
 # Calculate the camera position in world coordinates
-camera_position = -np.dot(rotation_matrix.T, tvec)
+## camera_position = -np.dot(rotation_matrix.T, tvec)
 
-print(success)
-print(rvec)
-print(tvec)
-print(camera_position) 
 
-R = np.array([[-0.0813445156856268], [-2.5478950926311636], [1.7376856594745234]], dtype=np.float32)
-T = np.array([[10.838262901867047], [-6.506593974297687], [60.308121310607724]], dtype=np.float32)
+# R = np.array([[-0.0813445156856268], [-2.5478950926311636], [1.7376856594745234]], dtype=np.float32)
+# T = np.array([[10.838262901867047], [-6.506593974297687], [60.308121310607724]], dtype=np.float32)
 
 world_point = [13, 0, 0]
 
 rvec_matrix = cv2.Rodrigues(R)[0]
 rmat = np.matrix(rvec_matrix)
 tmat = np.matrix(T)
-pmat = np.matrix(np.array([[world_point[0]], [world_point[1]], [world_point[]2]], dtype=np.float32))
+pmat = np.matrix(np.array([[world_point[0]], [world_point[1]], [world_point[2]]], dtype=np.float32))
 
 # world coordinate to camera coordinate
 cam_point = rmat * pmat + tmat
@@ -55,3 +52,4 @@ print(cam_point)
 
 # camera coordinate to world coordinate
 world_point = rmat ** -1 * (cam_point - tmat)
+print(world_point)
