@@ -20,26 +20,10 @@ closing = cv.morphologyEx(blur, cv.MORPH_OPEN, kernel)
 
 edges = cv.Canny(blur, threshold1=30, threshold2=150, apertureSize=3, L2gradient=True)
 
-_, binary = cv.threshold(gray, 127, 255, cv.THRESH_BINARY)
 
-# Perform morphological closing to fill small gaps
-kernel = np.ones((3, 3), np.uint8)  # You can adjust the kernel size for different effects
-closed = cv.morphologyEx(edges, cv.MORPH_CLOSE, kernel)
-
-contours, hierarchy = cv.findContours(closed, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-
-mask = np.zeros_like(gray)
-
-# Fill the mask with the contours
-cv.drawContours(mask, contours, -1, (255), thickness=cv.FILLED)
-
-cv.drawContours(img, contours, -1, (0, 255, 0), 2)
-
-# Apply the mask to the original image
-masked_image = cv.bitwise_and(img, img, mask=mask)
 
 # Display or save the result
-cv.imshow("Masked Image", masked_image)
+cv.imshow("Masked Image", edges)
 cv.imshow("Original Image", img)
 cv.waitKey(0)
 cv.destroyAllWindows()
