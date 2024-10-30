@@ -120,25 +120,75 @@ def __main__():
 # __main__()
 
 scale = 1.8            # Scale factor, <1 detects shorter lines, >1 detects longer lines
-sigma_scale = 1      # Controls Gaussian smoothing (higher = more smoothing)
-quant = 2.0            # Quantization of the gradient angle, lower values detect more lines
-ang_th = 22.5          # Angle tolerance in degrees, lower values are more selective
+sigma_scale = 1.1     # Controls Gaussian smoothing (higher = more smoothing)
+quant = 2.2           # Quantization of the gradient angle, lower values detect more lines
+ang_th = 16          # Angle tolerance in degrees, lower values are more selective
 log_eps = 1          # Detection threshold for small lines, larger for longer lines
-density_th = 0     # Minimum density of region pixels, 0 to 1, higher values are stricter
+density_th = 0    # Minimum density of region pixels, 0 to 1, higher values are stricter
 n_bins = 1024          # Number of bins in quantization of orientation, default is 1024
 
 # Initialize LSD detector
 lsd = cv.createLineSegmentDetector(cv.LSD_REFINE_STD, scale, sigma_scale, quant, ang_th, log_eps, density_th, n_bins)
 
 # Detect lines in the grayscale image
-lines = lsd.detect(SatImage_gray)[0]  # `lines` is a list of detected line segments
+lines = lsd.detect(droneImage_gray)[0]  # `lines` is a list of detected line segments
+
+lines_mask = np.zeros_like(droneImage_gray)
+
+extension_length = 10
 
 # Draw the detected lines on a copy of the source image
-line_image = srcSat.copy()
+line_image = srcDrone.copy()
 if lines is not None:
     for line in lines:
         x0, y0, x1, y1 = map(int, line[0])  # Line coordinates
-        cv.line(line_image, (x0, y0), (x1, y1),  (0, 255, 0), 1, cv.LINE_AA)
+        cv.line(lines_mask, (x0, y0), (x1, y1), 255, 1, cv.LINE_AA)
+
+        dx = x1 - x0
+        dy = y1 - y0
+        line_length = np.sqrt(dx ** 2 + dy ** 2)
+
+        # Normalize direction and extend both endpoints
+        if line_length > 0:  # Avoid division by zero
+            extend_x = int(extension_length * (dx / line_length))
+            extend_y = int(extension_length * (dy / line_length))
+
+            # New extended line endpoints
+            new_x0 = x0 - extend_x
+            new_y0 = y0 - extend_y
+            new_x1 = x1 + extend_x
+            new_y1 = y1 + extend_y
+
+            # Draw the extended line on the mask
+            cv.line(lines_mask, (new_x0, new_y0), (new_x1, new_y1), 255, 1, cv.LINE_AA)  # Use 255 for white in grayscale
+
+padded_image = cv.copyMakeBorder(lines_mask, 1, 1, 1, 1, cv.BORDER_CONSTANT, value=0)
+contours, _ = cv.findContours(padded_image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+contours_mask = np.zeros_like(droneImage_gray)
+cv.drawContours(contours_mask, contours, -1, 255, thickness=cv.FILLED)
+
+#Remove contours with small area and very large area
+
+
+kernel = np.ones((5, 5), np.uint8)
+opened_mask = cv.morphologyEx(contours_mask, cv.MORPH_OPEN, kernel)
+
+for contour in contours:
+    area = cv.contourArea(contour)
+    if area < 75000 or area > 1000000:
+        cv.drawContours(contours_mask, [contour], -1, (0, 0, 0), thickness=cv.FILLED)
+
+closed_mask = cv.morphologyEx(contours_mask, cv.MORPH_CLOSE, kernel)
+#apply opening on contours binary image
+
+filled_mask = cv.morphologyEx(contours_mask, cv.MORPH_CLOSE, kernel)
+
+
+cv.imshow('display', line_image)
+cv.imshow('contours', filled_mask)
+cv.waitKey(0)
+cv.destroyAllWindows()
+
 
 # lines2 = lsd.detect(line_image)[0]
 
@@ -149,7 +199,7 @@ if lines is not None:
 #         cv.line(line_image, (x0, y0), (x1, y1), (0, 255, 0), 1, cv.LINE_AA)
 
 # Display the original and line-detected images
-cv.imshow("Original Image", srcDrone)
-cv.imshow("Detected Lines", line_image)
-cv.waitKey(0)
-cv.destroyAllWindows()
+# cv.imshow("Original Image", srcDrone)
+# cv.imshow("Detected Lines", line_image)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
