@@ -31,6 +31,14 @@ def boundary_of_uav_path(anno):
     coords = [coords_min, coords_max]
     return coords
 
+def process_img():
+    drone_x_y = []
+    drone_x_y.append([2000.0,2000.0])
+    drone_x_y.append([2010.0,2010.0])
+    drone_x_y.append([2020.0,2010.0])
+    drone_x_y.append([2034.0,2057.0])
+    return drone_x_y
+
 def xyz_to_coords(boundaries, sat_res,x_y):
     loc_lat_long=[]
     north_bound=boundaries[0][0]
@@ -40,11 +48,9 @@ def xyz_to_coords(boundaries, sat_res,x_y):
     north_south=abs(north_bound-south_bound)
     east_west=abs(east_bound-west_bound)
     pix_lat_long_eq=[east_west/sat_res[0],north_south/sat_res[1]]
-    #important to remember that here our latitude is up-down and long is left to right, because our sat img is oriented towards west.
-    loc_lat_long.append(west_bound+(abs(x_y[0]*pix_lat_long_eq[0])))
-    loc_lat_long.append(abs(north_bound-(x_y[1]*pix_lat_long_eq[1])))
-    print(x_y[0]*pix_lat_long_eq[0])
-    return np.flip(loc_lat_long)
+    for i in range(0,4):
+        loc_lat_long.append([north_bound-(abs(x_y[i][1]*pix_lat_long_eq[1])),(west_bound+(abs(x_y[i][0]*pix_lat_long_eq[0])))])
+    return loc_lat_long
 
 def main():
     boundaries = load_csv_to_arr('./SatData/boundaries.txt')
@@ -57,8 +63,7 @@ def main():
     sat_res = [wid,hgt]
     data = load_csv_to_arr('./Billed Data/GNSS_data.csv')
     coords = boundary_of_uav_path(data)
-    x_y=[wid-100,hgt-100]
-    print(x_y)
+    x_y=process_img()
     loc_long_lat=xyz_to_coords(boundaries,sat_res, x_y)
     print(loc_long_lat)
     return
