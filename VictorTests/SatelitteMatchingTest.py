@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 #04325
 
-srcDrone = cv.imread('Billed Data/04325.jpg', cv.IMREAD_COLOR)
+srcDrone = cv.imread('Billed Data/05671.jpg', cv.IMREAD_COLOR)
 srcSat = cv.imread('SatData/StovringRoadCorner.jpg', cv.IMREAD_COLOR)
 
 #resize
@@ -119,7 +119,7 @@ def __main__():
 
 # __main__()
 
-scale = 1.8            # Scale factor, <1 detects shorter lines, >1 detects longer lines
+scale = 1.4            # Scale factor, <1 detects shorter lines, >1 detects longer lines
 sigma_scale = 1.1     # Controls Gaussian smoothing (higher = more smoothing)
 quant = 2.2           # Quantization of the gradient angle, lower values detect more lines
 ang_th = 16          # Angle tolerance in degrees, lower values are more selective
@@ -138,7 +138,7 @@ lines_mask = np.zeros_like(droneImage_gray)
 extension_length = 10
 
 # Draw the detected lines on a copy of the source image
-line_image = srcDrone.copy()
+line_image = srcSat.copy()
 if lines is not None:
     for line in lines:
         x0, y0, x1, y1 = map(int, line[0])  # Line coordinates
@@ -162,32 +162,85 @@ if lines is not None:
             # Draw the extended line on the mask
             cv.line(lines_mask, (new_x0, new_y0), (new_x1, new_y1), 255, 1, cv.LINE_AA)  # Use 255 for white in grayscale
 
-padded_image = cv.copyMakeBorder(lines_mask, 1, 1, 1, 1, cv.BORDER_CONSTANT, value=0)
-contours, _ = cv.findContours(padded_image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+contours, _ = cv.findContours(lines_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 contours_mask = np.zeros_like(droneImage_gray)
 cv.drawContours(contours_mask, contours, -1, 255, thickness=cv.FILLED)
 
-#Remove contours with small area and very large area
-
-
-kernel = np.ones((5, 5), np.uint8)
-opened_mask = cv.morphologyEx(contours_mask, cv.MORPH_OPEN, kernel)
+cv.imshow('mask2', lines_mask)
+cv.imshow('mask', contours_mask)
+cv.waitKey(0)
+cv.destroyAllWindows()
+ 
+print('Number of contours:', len(contours))
+#size of contours
 
 for contour in contours:
     area = cv.contourArea(contour)
-    if area < 75000 or area > 1000000:
+
+    if area < 2000 or area > 200000:
         cv.drawContours(contours_mask, [contour], -1, (0, 0, 0), thickness=cv.FILLED)
-
-closed_mask = cv.morphologyEx(contours_mask, cv.MORPH_CLOSE, kernel)
-#apply opening on contours binary image
-
-filled_mask = cv.morphologyEx(contours_mask, cv.MORPH_CLOSE, kernel)
+    else: print('Contour area:', area)
 
 
-cv.imshow('display', line_image)
-cv.imshow('contours', filled_mask)
+inverted_mask = cv.bitwise_not(contours_mask)
+
+# Step 2: Perform connected component analysis
+num_labels, labels, stats, centroids = cv.connectedComponentsWithStats(inverted_mask, connectivity=8)
+
+# Step 3: Create a mask to hold the filtered components
+filtered_mask = np.zeros_like(inverted_mask)
+
+# Define area thresholds
+min_area = 10000  # Minimum area to keep
+max_area = 100000  # Maximum area to keep
+
+# Step 4: Iterate over each component, filtering by area
+for i in range(1, num_labels):  # Start from 1 to skip the background
+    area = stats[i, cv.CC_STAT_AREA]
+    if min_area <= area <= max_area:
+        # Keep the component if its area is within the defined range
+        filtered_mask[labels == i] = 255
+
+# Step 5: Invert the mask back to the original style (black regions as holes)
+final_mask = cv.bitwise_not(filtered_mask)
+
+# Display results
+cv.imshow("Original Contours Mask", contours_mask)
+cv.imshow("Filtered Black Regions", final_mask)
 cv.waitKey(0)
 cv.destroyAllWindows()
+
+#apply opening on contours binary image
+
+# filled_mask = cv.morphologyEx(contours_mask, cv.MORPH_CLOSE, kernel)
+
+# # Set up the SimpleBlobDetector with parameters
+# params = cv.SimpleBlobDetector_Params()
+
+# # Filter by Area to focus on significant blobs
+# params.filterByArea = True
+# params.minArea = 1  # Minimum blob area
+# params.maxArea = 1000000  # Maximum blob area
+
+# _, binary_image = cv.threshold(closed_mask, 127, 255, cv.THRESH_BINARY)
+
+# params.filterByColor = True
+# params.blobColor = 0  # Detect black blobs
+
+# # Create a blob detector with the specified parameters
+# detector = cv.SimpleBlobDetector_create(params)
+
+# # Detect blobs in the binary image
+# keypoints = detector.detect(closed_mask)
+
+# print(f'Found {len(keypoints)} blobs.')
+
+# # Draw detected blobs as red circles on the original image for visualization
+# blob_image = cv.cvtColor(closed_mask, cv.COLOR_GRAY2BGR)
+# for kp in keypoints:
+#     x, y = int(kp.pt[0]), int(kp.pt[1])
+#     radius = int(kp.size / 2)
+#     cv.circle(blob_image, (x, y), radius, (0, 0, 255), 2)  # Red circles for blobs
 
 
 # lines2 = lsd.detect(line_image)[0]
