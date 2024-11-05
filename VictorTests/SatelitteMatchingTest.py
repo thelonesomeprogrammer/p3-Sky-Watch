@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 #04325
 
-srcDrone = cv.imread('Billed Data/04325.jpg', cv.IMREAD_COLOR)
+srcDrone = cv.imread('Billed Data/05671.jpg', cv.IMREAD_COLOR)
 srcSat = cv.imread('SatData/StovringRoadCorner.jpg', cv.IMREAD_COLOR)
 
 #resize
@@ -119,26 +119,129 @@ def __main__():
 
 # __main__()
 
-scale = 1.8            # Scale factor, <1 detects shorter lines, >1 detects longer lines
-sigma_scale = 1      # Controls Gaussian smoothing (higher = more smoothing)
-quant = 2.0            # Quantization of the gradient angle, lower values detect more lines
-ang_th = 22.5          # Angle tolerance in degrees, lower values are more selective
+scale = 1.4            # Scale factor, <1 detects shorter lines, >1 detects longer lines
+sigma_scale = 1.1     # Controls Gaussian smoothing (higher = more smoothing)
+quant = 2.2           # Quantization of the gradient angle, lower values detect more lines
+ang_th = 16          # Angle tolerance in degrees, lower values are more selective
 log_eps = 1          # Detection threshold for small lines, larger for longer lines
-density_th = 0     # Minimum density of region pixels, 0 to 1, higher values are stricter
+density_th = 0    # Minimum density of region pixels, 0 to 1, higher values are stricter
 n_bins = 1024          # Number of bins in quantization of orientation, default is 1024
 
 # Initialize LSD detector
 lsd = cv.createLineSegmentDetector(cv.LSD_REFINE_STD, scale, sigma_scale, quant, ang_th, log_eps, density_th, n_bins)
 
 # Detect lines in the grayscale image
-lines = lsd.detect(SatImage_gray)[0]  # `lines` is a list of detected line segments
+lines = lsd.detect(droneImage_gray)[0]  # `lines` is a list of detected line segments
+
+lines_mask = np.zeros_like(droneImage_gray)
+
+extension_length = 10
 
 # Draw the detected lines on a copy of the source image
 line_image = srcSat.copy()
 if lines is not None:
     for line in lines:
         x0, y0, x1, y1 = map(int, line[0])  # Line coordinates
-        cv.line(line_image, (x0, y0), (x1, y1),  (0, 255, 0), 1, cv.LINE_AA)
+        cv.line(lines_mask, (x0, y0), (x1, y1), 255, 1, cv.LINE_AA)
+
+        dx = x1 - x0
+        dy = y1 - y0
+        line_length = np.sqrt(dx ** 2 + dy ** 2)
+
+        # Normalize direction and extend both endpoints
+        if line_length > 0:  # Avoid division by zero
+            extend_x = int(extension_length * (dx / line_length))
+            extend_y = int(extension_length * (dy / line_length))
+
+            # New extended line endpoints
+            new_x0 = x0 - extend_x
+            new_y0 = y0 - extend_y
+            new_x1 = x1 + extend_x
+            new_y1 = y1 + extend_y
+
+            # Draw the extended line on the mask
+            cv.line(lines_mask, (new_x0, new_y0), (new_x1, new_y1), 255, 1, cv.LINE_AA)  # Use 255 for white in grayscale
+
+contours, _ = cv.findContours(lines_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+contours_mask = np.zeros_like(droneImage_gray)
+cv.drawContours(contours_mask, contours, -1, 255, thickness=cv.FILLED)
+
+cv.imshow('mask2', lines_mask)
+cv.imshow('mask', contours_mask)
+cv.waitKey(0)
+cv.destroyAllWindows()
+ 
+print('Number of contours:', len(contours))
+#size of contours
+
+for contour in contours:
+    area = cv.contourArea(contour)
+
+    if area < 2000 or area > 200000:
+        cv.drawContours(contours_mask, [contour], -1, (0, 0, 0), thickness=cv.FILLED)
+    else: print('Contour area:', area)
+
+
+inverted_mask = cv.bitwise_not(contours_mask)
+
+# Step 2: Perform connected component analysis
+num_labels, labels, stats, centroids = cv.connectedComponentsWithStats(inverted_mask, connectivity=8)
+
+# Step 3: Create a mask to hold the filtered components
+filtered_mask = np.zeros_like(inverted_mask)
+
+# Define area thresholds
+min_area = 10000  # Minimum area to keep
+max_area = 100000  # Maximum area to keep
+
+# Step 4: Iterate over each component, filtering by area
+for i in range(1, num_labels):  # Start from 1 to skip the background
+    area = stats[i, cv.CC_STAT_AREA]
+    if min_area <= area <= max_area:
+        # Keep the component if its area is within the defined range
+        filtered_mask[labels == i] = 255
+
+# Step 5: Invert the mask back to the original style (black regions as holes)
+final_mask = cv.bitwise_not(filtered_mask)
+
+# Display results
+cv.imshow("Original Contours Mask", contours_mask)
+cv.imshow("Filtered Black Regions", final_mask)
+cv.waitKey(0)
+cv.destroyAllWindows()
+
+#apply opening on contours binary image
+
+# filled_mask = cv.morphologyEx(contours_mask, cv.MORPH_CLOSE, kernel)
+
+# # Set up the SimpleBlobDetector with parameters
+# params = cv.SimpleBlobDetector_Params()
+
+# # Filter by Area to focus on significant blobs
+# params.filterByArea = True
+# params.minArea = 1  # Minimum blob area
+# params.maxArea = 1000000  # Maximum blob area
+
+# _, binary_image = cv.threshold(closed_mask, 127, 255, cv.THRESH_BINARY)
+
+# params.filterByColor = True
+# params.blobColor = 0  # Detect black blobs
+
+# # Create a blob detector with the specified parameters
+# detector = cv.SimpleBlobDetector_create(params)
+
+# # Detect blobs in the binary image
+# keypoints = detector.detect(closed_mask)
+
+# print(f'Found {len(keypoints)} blobs.')
+
+# # Draw detected blobs as red circles on the original image for visualization
+# blob_image = cv.cvtColor(closed_mask, cv.COLOR_GRAY2BGR)
+# for kp in keypoints:
+#     x, y = int(kp.pt[0]), int(kp.pt[1])
+#     radius = int(kp.size / 2)
+#     cv.circle(blob_image, (x, y), radius, (0, 0, 255), 2)  # Red circles for blobs
+
 
 # lines2 = lsd.detect(line_image)[0]
 
@@ -149,7 +252,7 @@ if lines is not None:
 #         cv.line(line_image, (x0, y0), (x1, y1), (0, 255, 0), 1, cv.LINE_AA)
 
 # Display the original and line-detected images
-cv.imshow("Original Image", srcDrone)
-cv.imshow("Detected Lines", line_image)
-cv.waitKey(0)
-cv.destroyAllWindows()
+# cv.imshow("Original Image", srcDrone)
+# cv.imshow("Detected Lines", line_image)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
