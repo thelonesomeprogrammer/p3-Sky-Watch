@@ -94,7 +94,6 @@ if __name__ == "__main__":
     fake_Pred = []
     for i,v in enumerate(Pred):
         fake_Pred.append([targets[i],v[1][0],v[0][0]])
-    print(fake_Pred)
 
     #fake_Pred = [[data[385][0],56.8927650,9.87344786],]
     #fake_Pred = [[data[360][0],56.8928297,9.87525923],[data[360][0],56.89314,9.874862]]
