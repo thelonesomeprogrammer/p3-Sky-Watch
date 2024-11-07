@@ -36,7 +36,6 @@ def load_images(images_dir, image_names):
     print(f"Images loaded from {images_dir}.")
     return loaded_images
 
-# After extracting features
 def extract_features(extractor, images, device):
     """Extracts features from the provided images."""
     features = {}
@@ -45,15 +44,9 @@ def extract_features(extractor, images, device):
             img = img.to(device)
             feats = extractor.extract(img.unsqueeze(0))  # Add batch dimension
             feats = rbd(feats)  # Remove batch dimension
-            # Debug statements
-            print(f"Extracted features for {name}:")
-            for key in feats:
-                if isinstance(feats[key], torch.Tensor):
-                    print(f"{key}: {feats[key].shape}")
             features[name] = feats
     print("Feature extraction completed.")
     return features
-
 
 def split_image_into_tiles(image, tile_size=(512, 512), overlap=128):
     """Splits the image into overlapping tiles."""
@@ -83,43 +76,115 @@ def extract_features_from_tiles(tiles, extractor, device):
     print("Feature extraction for tiles completed.")
     return features
 
-def match_features(matcher, feats0, feats1, image0, image1, device):
-    """Matches features between two feature sets."""
-    # Preprocess images to ensure they are grayscale and have the correct dimensions
-    def preprocess_image(img):
-        if img.dim() == 3 and img.shape[0] == 3:
-            # Convert RGB to grayscale
-            img = 0.2989 * img[0, :, :] + 0.5870 * img[1, :, :] + 0.1140 * img[2, :, :]
-        elif img.dim() == 3 and img.shape[0] == 1:
-            img = img[0, :, :]
-        else:
-            raise ValueError("Image tensor has unexpected shape: {}".format(img.shape))
-        img = img.unsqueeze(0).unsqueeze(0).to(device)  # Shape: [1, 1, H, W]
-        return img
 
-    image0 = preprocess_image(image0)
-    image1 = preprocess_image(image1)
+import torch
 
+import torch
+
+import torch
+
+def match_features(matcher, feats0, feats1, device):
+    """
+    Matches features between two feature sets using LightGlue.
+
+    Args:
+        matcher (LightGlue): The LightGlue matcher instance.
+        feats0 (dict): Features from the first image, containing 'keypoints' and 'descriptors'.
+                       - 'keypoints': Tensor of shape [N0, 2]
+                       - 'descriptors': Tensor of shape [D, N0]
+        feats1 (dict): Features from the second image, containing 'keypoints' and 'descriptors'.
+                       - 'keypoints': Tensor of shape [N1, 2]
+                       - 'descriptors': Tensor of shape [D, N1]
+        device (torch.device): The device to perform computations on (e.g., torch.device('cuda')).
+
+    Returns:
+        dict: A dictionary containing matches and related information with batch dimension removed.
+              Keys may include:
+              - 'matches': Tensor of shape [K, 2] where K is the number of matches
+              - Other relevant match information as provided by LightGlue
+    """
+    # ---------------------------
+    # 1. Input Validation
+    # ---------------------------
+    required_keys = ['keypoints', 'descriptors']
+    
+    for i, (feats, name) in enumerate(zip([feats0, feats1], ['feats0', 'feats1'])):
+        for key in required_keys:
+            assert key in feats, f"'{key}' not found in {name}. Required keys: {required_keys}"
+            assert isinstance(feats[key], torch.Tensor), f"'{key}' in {name} must be a torch.Tensor"
+        
+        # Check keypoints shape: [N, 2]
+        assert feats['keypoints'].ndim == 2 and feats['keypoints'].shape[1] == 2, \
+            f"'keypoints' in {name} must have shape [N, 2], got {feats['keypoints'].shape}"
+        
+        # Check descriptors shape: [D, N]
+        assert feats['descriptors'].ndim == 2, \
+            f"'descriptors' in {name} must have 2 dimensions [D, N], got {feats['descriptors'].shape}"
+    
+    # ---------------------------
+    # 2. Data Preparation
+    # ---------------------------
+    # Move features to the specified device and ensure correct data types
+    # Also, add batch dimension by unsqueezing at dim=0
+
+    def prepare_features(feats, name):
+        prepared = {}
+        for key, tensor in feats.items():
+            # Ensure tensor is of type float32
+            tensor = tensor.float()
+            
+            # Move to the specified device
+            tensor = tensor.to(device)
+            
+            # Add batch dimension
+            tensor = tensor.unsqueeze(0)  # Shape becomes [1, ..., ...]
+            
+            prepared[key] = tensor
+            print(f"Prepared {name}['{key}']: {tensor.shape}, dtype: {tensor.dtype}, device: {tensor.device}")
+        return prepared
+
+    prepared_feats0 = prepare_features(feats0, 'feats0')
+    prepared_feats1 = prepare_features(feats1, 'feats1')
+
+    # Prepare the data dictionary as expected by LightGlue
     data = {
-        "image0": image0,  # [1, 1, H0, W0]
-        "image1": image1,  # [1, 1, H1, W1]
-        "keypoints0": feats0["keypoints"].unsqueeze(0).to(device),  # [1, N0, 2]
-        "keypoints1": feats1["keypoints"].unsqueeze(0).to(device),  # [1, N1, 2]
-        "descriptors0": feats0["descriptors"].unsqueeze(0).to(device),  # [1, N0, D]
-        "descriptors1": feats1["descriptors"].unsqueeze(0).to(device),  # [1, N1, D]
+        "image0": prepared_feats0,  # Contains 'keypoints' and 'descriptors'
+        "image1": prepared_feats1,  # Contains 'keypoints' and 'descriptors'
     }
 
-    for key in data:
-        if isinstance(data[key], torch.Tensor):
-            print(f"{key}: {data[key].shape}")
-            
-    # Match features
-    with torch.no_grad():
-        matches = matcher(data)
+    # ---------------------------
+    # 3. Feature Matching
+    # ---------------------------
+    try:
+        with torch.no_grad():
+            matches = matcher(data)
+    except AssertionError as e:
+        # Provide more context if a known assertion fails
+        if "Missing key" in str(e):
+            raise AssertionError(f"Input data to matcher is missing required keys: {e}")
+        else:
+            raise e
+    except Exception as e:
+        # Catch-all for other exceptions
+        raise RuntimeError(f"An error occurred during feature matching: {e}")
 
-    # Remove batch dimension from matches
-    matches = {k: v.squeeze(0) if isinstance(v, torch.Tensor) else v for k, v in matches.items()}
-    return matches
+    # ---------------------------
+    # 4. Post-processing
+    # ---------------------------
+    # Remove batch dimension from all tensor outputs
+    processed_matches = {}
+    for k, v in matches.items():
+        if isinstance(v, torch.Tensor):
+            processed_v = v.squeeze(0)
+            processed_matches[k] = processed_v
+            print(f"Processed matches['{k}']: {processed_v.shape}")
+        else:
+            processed_matches[k] = v  # Non-tensor outputs are copied as is
+    
+    return processed_matches
+
+
+
 
 
 
@@ -187,7 +252,6 @@ def main():
         satellite_features[sat_image_name] = features_tiles
         print(f"Features extracted for {len(features_tiles)} tiles. and shape of features is {features_tiles[0]['keypoints'].shape}")
     # For each Drone Image
-    # For each Drone Image
     for drone_image_name, drone_feats in drone_features.items():
         drone_image = drone_images[drone_image_name]
         # For each Satellite Image
@@ -200,25 +264,59 @@ def main():
 
             # Initialize list to store matches
             all_matches = []
+    
+    # Use tqdm for progress bar
+    for i, tile_feats in enumerate(tqdm(features_tiles, desc=f"Matching tiles for '{sat_image_name}'")):
+        # Match features
+        matches = match_features(matcher, drone_feats, tile_feats, device)
+        matched_indices = matches["matches0"]
+        print(type(matches["matches0"]))
+        if matched_indices is not None:
+            if isinstance(matched_indices, torch.Tensor):
+                num_valid = (matched_indices > -1).sum().item()
+            elif isinstance(matched_indices, np.ndarray):
+                num_valid = np.sum(matched_indices > -1)
+            else:
+                num_valid = len([m for m in matched_indices if m > -1])
+            
+            if num_valid > 0:
+                all_matches.append((i, matches))
+                # Debugging print
+                print(f"Tile {i} has {num_valid} matches.")
 
-            # Use tqdm for progress bar
-            for i, (tile_feats, (tile, x, y)) in enumerate(tqdm(zip(features_tiles, tiles), desc=f"Matching tiles for '{sat_image_name}'", total=len(tiles))):
-                # Match features
-                matches = match_features(matcher, drone_feats, tile_feats, drone_image, tile, device)
-                if matches["matches0"] is not None and len(matches["matches0"]) > 0:
-                    all_matches.append((i, matches))
+    # Define the function to get the number of valid matches
+    def get_num_valid_matches(match_tuple):
+        matches = match_tuple[1]
+        matched_indices = matches["matches0"]
+        if matched_indices is not None:
+            valid = matched_indices > -1
+            if isinstance(valid, torch.Tensor):
+                return valid.sum().item()
+            elif isinstance(valid, np.ndarray):
+                return np.sum(valid)
+            else:
+                return len([m for m in valid if m])
+        else:
+            return 0
 
-            print(f"Drone image '{drone_image_name}' matched with {len(all_matches)} satellite tiles.")
+    # Sort all_matches based on the number of valid matches
+    all_matches.sort(key=get_num_valid_matches, reverse=True)
 
+    print(f"Drone image '{drone_image_name}' matched with {len(all_matches)} satellite tiles.")
 
-            # Visualize Matches for Selected Tile Pairs
-            num_tiles_to_visualize = min(num_tile_matches_to_visualize, len(all_matches))
-            for idx in range(num_tiles_to_visualize):
-                tile_idx, matches = all_matches[idx]
-                tile, x, y = tiles[tile_idx]
-                tile_feats = features_tiles[tile_idx]
-                title = f"Drone: {drone_image_name} | Satellite Tile: {tile_idx+1}"
-                visualize_matches(drone_image, tile, drone_feats, tile_feats, matches, title=title)
+    # Verify the sorting
+    for idx, (tile_idx, matches) in enumerate(all_matches):
+        num_matches = get_num_valid_matches((tile_idx, matches))
+        print(f"Tile {tile_idx} has {num_matches} matches.")
+
+    # Visualize Matches for Selected Tile Pairs
+    num_tiles_to_visualize = min(num_tile_matches_to_visualize, len(all_matches))
+    for idx in range(num_tiles_to_visualize):
+        tile_idx, matches = all_matches[idx]
+        tile, x, y = tiles[tile_idx]
+        tile_feats = features_tiles[tile_idx]
+        title = f"Drone: {drone_image_name} | Satellite Tile: {tile_idx+1}"
+        visualize_matches(drone_image, tile, drone_feats, tile_feats, matches, title=title)
 
 if __name__ == "__main__":
     main()
