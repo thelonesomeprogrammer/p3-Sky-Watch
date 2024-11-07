@@ -1,7 +1,7 @@
 import math 
 import numpy as np
 import csv
-from pnp import pnp
+from pnp import sky_deres_test, sky_vores_test
 
 ## file: path to annotation csv
 def load_csv_to_arr(file): ## load the csv data (might be replaced with global implantation)
@@ -90,15 +90,17 @@ if __name__ == "__main__":
             [1643, 1413]
         ]], dtype=np.float32) # x y i billeder 
     targets = [data[360][0],data[389][0]]
-    Pred = pnp(object_points,image_points)
+    Pred = sky_vores_test(object_points,image_points)
     fake_Pred = []
     for i,v in enumerate(Pred):
         fake_Pred.append([targets[i],v[1][0],v[0][0]])
 
-    #fake_Pred = [[data[385][0],56.8927650,9.87344786],]
-    #fake_Pred = [[data[360][0],56.8928297,9.87525923],[data[360][0],56.89314,9.874862]]
-    #fake_Pred = [[data[360][0],56.89111069,9.91955481],[data[360][0],56.8929931,9.87512394]]
-    #fake_Pred = [[data[360][0],56.8921211,9.87555542],[data[360][0],5.68928543e+01,9.87569206], [data[360][0],5.68931689e+01,9.88000727], [data[360][0],56.89111069,9.91955481]]
+    validation(fake_Pred,data)
+
+    Pred = sky_deres_test(object_points,image_points)
+    fake_Pred = []
+    for i,v in enumerate(Pred):
+        fake_Pred.append([targets[i],v[1][0],v[0][0]])
 
     validation(fake_Pred,data)
 

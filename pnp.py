@@ -13,11 +13,20 @@ def pnp(object_points, image_points, camera_matrix, dist_coeffs):
     return cam_coords
 
 
-def sky_test(object_points, image_points):
+def sky_vores_test(object_points, image_points):
     camera_matrix = np.array([[3400, 0, 1929], [0, 3400, 1091], [0, 0, 1]], dtype=np.float32) # Camera intrinsic parameters
     distortion_coeffs = np.zeros(4) # Distortion coefficients (assuming no distortion for simplicity)
-
+    camera_matrix,  droi  = cv2.getOptimalNewCameraMatrix(camera_matrix,distortion_coeffs,(3840,2160),1,(3840,2160))
     print(pnp(object_points, image_points, camera_matrix, distortion_coeffs))
+    return pnp(object_points, image_points, camera_matrix, distortion_coeffs)
+
+def sky_deres_test(object_points, image_points):
+    camera_matrix = np.array([[3.37557838e+03, 0.00000000e+00, 1.90060064e+03], [0.00000000e+00, 3.37627765e+03, 1.02106476e+03], [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
+    distortion_coeffs = np.array([[-5.68718021e-02, -3.77364195e+00, -2.33949181e-03,  9.64380021e-03,   1.04120413e+01]])
+    camera_matrix,  droi  = cv2.getOptimalNewCameraMatrix(camera_matrix,distortion_coeffs,(3840,2160),1,(3840,2160))
+    print(pnp(object_points, image_points, camera_matrix, distortion_coeffs))
+    return pnp(object_points, image_points, camera_matrix, distortion_coeffs)
+
 
 def vpair_test(object_points, image_points):
     camera_matrix = np.array([[750.62614972, 0, 402.41007535], [0, 750.26301185, 292.98832147], [0, 0, 1]])
@@ -52,7 +61,8 @@ if __name__ == "__main__":
             [3264, 2055],
             [1643, 1413]
         ]], dtype=np.float32) # x y i billeder 
-    # sky_test(sky_object_points, sky_image_points)
+    sky_vores_test(sky_object_points, sky_image_points)
+    sky_deres_test(sky_object_points, sky_image_points)
 
     vpair_object_points = np.array([
         [

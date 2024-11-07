@@ -155,9 +155,9 @@ def visualize_matches(image0, image1, feats0, feats1, matches, title=''):
 def main():
     """Main function to execute the image processing pipeline."""
     # Configuration
-    drone_images_dir = "drone_views"  # Directory containing drone images
-    satellite_images_dir = "satellite_views"  # Directory containing satellite images
-    drone_image_names = ["00078.png", "00077.png"]  # List of drone images
+    drone_images_dir = "drone"  # Directory containing drone images
+    satellite_images_dir = "sat"  # Directory containing satellite images
+    drone_image_names = ["00078.png"]  # List of drone images
     satellite_image_names = ["h.jpg"]  # List of satellite images
 
     tile_size = (1500, 1500)  # Adjusted tile size for better performance
