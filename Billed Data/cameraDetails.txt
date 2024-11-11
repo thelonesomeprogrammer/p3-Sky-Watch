@@ -1,2 +1,0 @@
-Camera: framos-IMX678
-Lens: Wide-Angle 6.8mm M12 Lens, F/1.8, with 650nm IRC Filter

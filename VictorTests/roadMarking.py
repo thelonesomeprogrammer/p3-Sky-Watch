@@ -3,7 +3,7 @@ import numpy as np
 import random
 #04325
 
-srcDrone = cv.imread('Billed Data/05349.jpg', cv.IMREAD_COLOR)
+srcDrone = cv.imread('Billed Data/04325.jpg', cv.IMREAD_COLOR)
 srcSat = cv.imread('SatData/StovringRoadCorner.jpg', cv.IMREAD_COLOR)
 
 droneImg = cv.resize(srcDrone, (int(srcDrone.shape[1] * 0.2), int(srcDrone.shape[0] * 0.2)), interpolation = cv.INTER_AREA)
@@ -24,8 +24,8 @@ def roadMarking(img):
 
     cv.imshow('HSV1', HSV_image)
 
-    lower_blue = np.array([80, 70, 100])
-    upper_blue = np.array([180, 255, 255])
+    lower_blue = np.array([80, 20, 50])
+    upper_blue = np.array([120, 255, 255])
 
     mask = cv.inRange(HSV_image, lower_blue, upper_blue)
     HSV_image[mask == 255] = [255, 0, 0]

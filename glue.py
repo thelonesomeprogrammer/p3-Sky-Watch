@@ -6,9 +6,9 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from LightGlue.lightglue.lightglue import LightGlue
-from LightGlue.lightglue.utils import load_image, rbd
-from LightGlue.lightglue import viz2d, SuperPoint
+from lightglue.lightglue import LightGlue
+from lightglue.utils import load_image, rbd
+from lightglue import viz2d, SuperPoint
 from tqdm import tqdm  # For progress bars
 
 def setup_device():
