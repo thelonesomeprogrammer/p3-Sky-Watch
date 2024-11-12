@@ -41,3 +41,19 @@ def correct_perspective(image, roll, pitch, yaw, focal_length_px):
     corrected_image = cv2.warpPerspective(image, H, (w, h), flags=cv2.INTER_LINEAR)
 
     return corrected_image
+
+def calculate_gsd(altitude_m, image_width_px, SENSOR_WIDTH, FOCAL_LENGTH):
+    """
+    Calculate the Ground Sampling Distance (GSD) for the drone image.
+    """
+    # Convert Sensor Width and Focal Length from mm to meters
+    sensor_width_m = SENSOR_WIDTH / 1000.0  # mm to meters
+    focal_length_m = FOCAL_LENGTH / 1000.0  # mm to meters
+
+    # GSD = (Sensor Width * Altitude) / (Focal Length * Image Width)
+    gsd = (sensor_width_m * altitude_m) / (focal_length_m * image_width_px)
+    print(f"Drone altitude (m): {altitude_m}")
+    print(f"Image width (px): {image_width_px}")
+    print(f"Calculated drone GSD (m/px): {gsd}")
+
+    return gsd  # in meters per pixel
