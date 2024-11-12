@@ -57,3 +57,10 @@ def calculate_gsd(altitude_m, image_width_px, SENSOR_WIDTH, FOCAL_LENGTH):
     print(f"Calculated drone GSD (m/px): {gsd}")
 
     return gsd  # in meters per pixel
+
+def estimate_scale(drone_gsd, satellite_gsd):
+    """
+    Estimate the scale factor between drone and satellite images.
+    """
+    scale_factor = drone_gsd / satellite_gsd
+    return scale_factor
