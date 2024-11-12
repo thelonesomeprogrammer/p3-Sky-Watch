@@ -118,9 +118,6 @@ def runFeatureExtractionTest(TestType, img):
             pltArray[i, j] = MatchRate
 
             # Debugging output
-            print(f'Feature Type: {FeatureTypeInstance.name}')
-            print(f'des1 dtype: {des1.dtype}, shape: {des1.shape}')
-            print(f'des2 dtype: {des2.dtype}, shape: {des2.shape}')
             print(f'Number of Keypoints (Image 1): {len(kp1)}')
             print(f'Number of Keypoints (Image 2): {len(kp2)}')
             if TestType == 'ScaleTest':
@@ -163,6 +160,5 @@ def __main__():
     pltArray = runFeatureExtractionTest(TestType, img)
 
     plotMatchRate(pltArray, TestType)
-
 
 __main__()
