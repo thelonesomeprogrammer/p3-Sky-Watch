@@ -77,12 +77,6 @@ def extract_features_from_tiles(tiles, extractor, device):
     return features
 
 
-import torch
-
-import torch
-
-import torch
-
 def match_features(matcher, feats0, feats1, device):
     """
     Matches features between two feature sets using LightGlue.
