@@ -152,7 +152,7 @@ def plotMatchRate(pltArray, TestType):
     plt.show()
 
 def __main__():
-    img = cv.imread('drone_views/00074.png', cv.IMREAD_GRAYSCALE)
+    img = cv.imread('datasets/vpair/00074.png', cv.IMREAD_GRAYSCALE)
 
     # Define test type: ScaleTest or RotationTest
     TestType = 'ScaleTest'
