@@ -77,6 +77,9 @@ def process_images(satellite_image_path, drone_images_path_list, flight_data_csv
     search_params = dict(checks=50)
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
+    # bf = cv2.BFMatcher( cv2.NORM_L1, crossCheck=False)
+
+
     # Iterate over drone images
     for idx, drone_image_path in enumerate(drone_images_path_list):
         print(f"\nProcessing {drone_image_path}")
@@ -116,7 +119,7 @@ def process_images(satellite_image_path, drone_images_path_list, flight_data_csv
             # Extract keypoint coordinates from kp_sat
             kp_sat_pts = np.array([kp.pt for kp in kp_sat], dtype=np.float32)
             matches = flann.knnMatch(des_drone, des_sat, k=2)
-           
+            # matches = bf.knnMatch(des_sat ,des_drone,k=2)
             # Apply Lowe's ratio test
             good_matches = []
             for m, n in matches:
