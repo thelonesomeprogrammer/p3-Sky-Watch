@@ -8,7 +8,7 @@ class FeatureType(Enum.Enum):
     ORB = 1
     BRISK = 2
 
-def getFeatures(img, featureType):
+def getFeatures(featureType):
     if featureType == FeatureType.SIFT:
         return cv.SIFT_create(nfeatures=1000)
     elif featureType == FeatureType.ORB:
@@ -16,18 +16,21 @@ def getFeatures(img, featureType):
     elif featureType == FeatureType.BRISK:
         return cv.BRISK_create(thresh=80)
     
-def getMatches(des1, des2, featureType):
-    bf = cv.BFMatcher()
-
+def getBFMatcher(featureType):
     if featureType == FeatureType.SIFT:
-        matches = bf.knnMatch(des1, des2, k=2)
-        good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
-        return good_matches
+        return cv.BFMatcher(cv.NORM_L2, crossCheck=False)
+    elif featureType in (FeatureType.ORB, FeatureType.BRISK):
+        return cv.BFMatcher(cv.NORM_HAMMING, crossCheck=False)
     
-    elif featureType == FeatureType.ORB or featureType == FeatureType.BRISK:
-        matches = bf.knnMatch(des1, des2, k=2)
-        good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
-        return good_matches
+def getMatches(des1, des2, featureType):
+    
+    bf = getBFMatcher(featureType)
+
+    matches = bf.knnMatch(des1, des2, k=2)
+
+    good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
+    
+    return good_matches
     
 def getKeypoints(kp1, kp2, scale):
     for kp in kp1:
@@ -64,9 +67,8 @@ def getGoodMatches(matches, featureType):
     #             good.append(match)
     # return good
 
-def runFeatureExtractionTest(TestType, img, algorithm):
-    
-# Define number of iterations based on test type
+def runFeatureExtractionTest(TestType, img):
+    # Define number of iterations based on test type
     if TestType == 'ScaleTest':
         Iterations = 20
     elif TestType == 'RotationTest':
@@ -74,39 +76,34 @@ def runFeatureExtractionTest(TestType, img, algorithm):
 
     pltArray = np.empty((3, Iterations))
 
-# Calculate match rate for each feature type: SIFT, ORB, BRISK
+    # Calculate match rate for each feature type: SIFT, ORB, BRISK
     for i in range(3):
-
         FeatureTypeInstance = FeatureType(i)
+        algorithm = getFeatures(FeatureTypeInstance)
         kp1, des1 = algorithm.detectAndCompute(img, None)
 
         angle = 0
 
         if TestType == 'ScaleTest':
-            scale = 0.1
-        else:
+            scale = 0.2
+        elif TestType == 'RotationTest':
             scale = 1
 
-        for j in range(1, Iterations):
+        scale = round(scale, 1)
 
+        for j in range(0, Iterations):
             if TestType == 'ScaleTest':
-                scale = round(scale + 0.1, 1)
                 TransformedSrc = getResizedImages(img, scale)
+                scale = round(scale + 0.1, 1)
             elif TestType == 'RotationTest':
-                angle = angle + 10
                 TransformedSrc = getRotatedImages(img, angle)
+                angle += 10
 
-            algorithm = getFeatures(TransformedSrc, FeatureTypeInstance)
-        
-            if TestType == 'RotationTest':
-
-                kp2, des2 = kp1, des1
-                matches = getMatches(des1, des2, FeatureTypeInstance)
-                MatchRate = len(matches) / len(kp1) * 100
-                pltArray[i, 0] = MatchRate 
-
+            # Re-initialize the algorithm for the transformed image
+            algorithm = getFeatures(FeatureTypeInstance)
             kp2, des2 = algorithm.detectAndCompute(TransformedSrc, None)
 
+            # Convert descriptors to the same type if necessary
             if des1.dtype != des2.dtype:
                 des1 = des1.astype(np.float32)
                 des2 = des2.astype(np.float32)
@@ -117,25 +114,26 @@ def runFeatureExtractionTest(TestType, img, algorithm):
             matches = getMatches(des1, des2, FeatureTypeInstance)
 
             # Calculate match rate as percentage of keypoints matched
-            MatchRate = len(matches)/len(kp1) * 100
+            MatchRate = len(matches) / len(kp1) * 100
+            pltArray[i, j] = MatchRate
 
-            pltArray[i,j] = MatchRate
-
+            # Debugging output
+            print(f'Feature Type: {FeatureTypeInstance.name}')
+            print(f'des1 dtype: {des1.dtype}, shape: {des1.shape}')
+            print(f'des2 dtype: {des2.dtype}, shape: {des2.shape}')
             print(f'Number of Keypoints (Image 1): {len(kp1)}')
             print(f'Number of Keypoints (Image 2): {len(kp2)}')
             if TestType == 'ScaleTest':
-                print(f'scale: {scale}')
+                print(f'Scale: {scale}')
             elif TestType == 'RotationTest':
-                print(f'angle: {angle}')
-            print(f'Number of Matches: {len(matches)}')
-
-            srcKeypoints, srcTransformedKeypoints = getKeypointImages(TransformedSrc, kp1, kp2)
+                print(f'Angle: {angle}')
+            print(f'Number of Matches: {len(matches)}\n')
 
     return pltArray
 
 def plotMatchRate(pltArray, TestType):
     if TestType == 'ScaleTest':
-        x = np.arange(0.1, 2.1, 0.1)
+        x = np.arange(0.2, 2.2, 0.1)
     elif TestType == 'RotationTest':
         x = np.arange(0, 360, 10)
 
@@ -143,28 +141,28 @@ def plotMatchRate(pltArray, TestType):
     y2 = pltArray[1]
     y3 = pltArray[2]
 
+    print(np.round(pltArray))
+
     plt.plot(x, y1, label='SIFT')
     plt.plot(x, y2, label='ORB')
     plt.plot(x, y3, label='BRISK')
 
     plt.legend()
-    plt.xticks(x[::2])
+    plt.xticks(x[::2])    
     plt.xlabel('Scale')
     plt.ylabel('Match Rate')
     plt.title('Match Rate vs Scale')
     plt.show()
 
 def __main__():
-    img = cv.imread('Billed Data/04345.jpg', cv.IMREAD_GRAYSCALE)
+    img = cv.imread('drone_views/00074.png', cv.IMREAD_GRAYSCALE)
 
     # Define test type: ScaleTest or RotationTest
     TestType = 'ScaleTest'
-    featureType = FeatureType.SIFT
 
-    algorithm = getFeatures(img, featureType)
-
-    pltArray = runFeatureExtractionTest(TestType, img, algorithm)
+    pltArray = runFeatureExtractionTest(TestType, img)
 
     plotMatchRate(pltArray, TestType)
+
 
 __main__()
