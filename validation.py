@@ -3,6 +3,8 @@ import numpy as np
 import csv
 from pnp import sky_deres_test, sky_vores_test
 
+
+
 ## file: path to annotation csv
 def load_csv_to_arr(file): ## load the csv data (might be replaced with global implantation)
     with open(file) as csv_file:
@@ -10,7 +12,9 @@ def load_csv_to_arr(file): ## load the csv data (might be replaced with global i
         csv_reader = csv.reader(csv_file, delimiter=',')
         for k, row in enumerate(csv_reader):
             if k != 0:
-                anno.append(list(map(float, row[0:])))
+                data = list(map(float, row[1:]))
+                data.insert(0, row[0])
+                anno.append(data)
         return anno
 
 
@@ -33,23 +37,21 @@ def cal_dist(Pred, Target): ## calculate distance between our guess and ground t
 
             
 # Pred: [[id, x, y]]
-def validation(Pred, Targets):
-    pred_list = np.array(sorted(np.asarray(Pred), key=lambda x: x[0])) ## sort the predictions to reduce time to find matching target
+def validation(pred, targets):
+    pred_list = np.array(sorted(np.asarray(pred), key=lambda x: x[0])) ## sort the predictions to reduce time to find matching target
     startsearch = 0 ## start point for our search for matching target
     last_hit = 0 ## last time we had a hit
     hit_deltas = [] ## distance between hits  
-    Target = [] ## the filtered Targets
     for v in pred_list: 
-        for i in range(startsearch, len(Targets)): ## loop over the remaining targets that might match our data 
-            if Targets[i][0] == v[0]: ## check if this target is the target the fits the current prediction 
-                Target.append([data[i][0],data[i][3],data[i][4]]) ## take only the relevant info from the target 
+        for i in range(startsearch, len(targets)): ## loop over the remaining targets that might match our data 
+            if targets[i][0] == v[0]: ## check if this target is the target the fits the current prediction 
                 hit_deltas.append(startsearch - last_hit) ## how long since last hit 
                 last_hit = startsearch
                 break
             else:
                 startsearch += 1
 
-    dist_list = np.asanyarray(cal_dist(pred_list, Target)) ## calculate the distance between prediction and target
+    dist_list = np.asanyarray(cal_dist(pred_list, targets)) ## calculate the distance between prediction and target
     successlist = np.where(dist_list <= 50)[0] ## take the data that is within our 50m delta goal
     successrate = len(successlist) / len(dist_list) * 100 ## calculate success rate (how often do we hit within the 50m goal)
     meanerror = dist_list.mean() ## calculate mean error
