@@ -106,6 +106,6 @@ if __name__ == "__main__":
 
     validation(fake_Pred,data)
 
-#hvor mange procent af predictions er under 50m (succesrate)
+#hvor mange procent af vores predictions/bereninger er under 50m (succesrate)
 #hvor ofte gætter vi (avg_hit)
 
