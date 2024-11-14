@@ -1,6 +1,7 @@
 import cv2
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
 
 from sklearn.cluster import DBSCAN
 
@@ -20,9 +21,9 @@ def main(data_path,max_keypoints):
     extractor = SuperPoint(max_num_keypoints=max_keypoints).eval().to(device)
     sat_extractor = SuperPoint(max_num_keypoints=max_keypoints*20).eval().to(device)
     matcher = LightGlue(features="superpoint").eval().to(device)
-    data_set = load_csv_to_arr(data_path+"GNSS_data.csv")
-    sat_img =  load_image(data_path+"SatData/StovringNorthOriented.jpg")
-    img = cv2.imread(data_path+"SatData/StovringNorthOriented.jpg")
+    data_set = load_csv_to_arr(data_path+"GNSS_data_test.csv")
+    sat_img =  load_image(data_path+"SatData/vpair final.jpg")
+    img = cv2.imread(data_path+"SatData/vpair final.jpg")
     sat_features = sat_extractor.extract(sat_img.unsqueeze(0))
     bounds = load_bonuds(data_path+"SatData/boundaries.txt")
     sat_res = (img.shape[0],img.shape[1])
@@ -31,8 +32,8 @@ def main(data_path,max_keypoints):
     features = []
     matches = []
     pred = []
-    for i in data_set[:11]:
-        img = load_image(data_path+"0"+i[0]+".jpg")
+    for i in data_set:
+        img = load_image(data_path+i[0]+".png")
         img.to(device)
         target.append([i[0],i[1],i[2]])
         imgs.append([i[0],img])
@@ -49,6 +50,25 @@ def main(data_path,max_keypoints):
             ] for t in img_matches["matches0"][0] if not torch.all(t == -1)])
         db = DBSCAN(eps=500, min_samples = 2).fit(sat_keypoints[:,:2])
         labels = db.labels_
+
+
+
+        plt.figure(figsize=(10, 8))
+        unique_labels = set(labels)
+        colors = plt.cm.get_cmap("tab10", len(unique_labels))
+
+        for label in unique_labels:
+                # Color for each cluster; noise points are in black
+            color = colors(label) if label != -1 else (0, 0, 0, 1)
+            plt.scatter(sat_keypoints[:,:2][labels == label, 0], sat_keypoints[:,:2][labels == label, 1], c=[color], label=f"Cluster {label}" if label != -1 else "Noise")
+
+        plt.title("DBSCAN Clustering of Points")
+        plt.xlabel("X Coordinate")
+        plt.ylabel("Y Coordinate")
+        plt.legend(loc="upper right")
+        plt.show()
+
+
         unique_labels, counts = np.unique(labels[labels != -1], return_counts=True)  # Exclude noise (-1)
         try:
             largest_cluster_label = unique_labels[np.argmax(counts)]  # Label of the largest cluster
@@ -70,7 +90,7 @@ def main(data_path,max_keypoints):
     validation(pred,target)
 
 
-main("./datasets/SkyWatchData/",2048)
+main("./datasets/vpair/",2048)
         
 
         
