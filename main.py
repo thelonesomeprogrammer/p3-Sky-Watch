@@ -19,14 +19,21 @@ from pnp import sky_vores_test
 def main(data_path,max_keypoints):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     extractor = SuperPoint(max_num_keypoints=max_keypoints).eval().to(device)
-    sat_extractor = SuperPoint(max_num_keypoints=max_keypoints*20).eval().to(device)
+    sat_extractor = SuperPoint(max_num_keypoints=max_keypoints).eval().to(device)
     matcher = LightGlue(features="superpoint").eval().to(device)
     data_set = load_csv_to_arr(data_path+"GNSS_data_test.csv")
     sat_img =  load_image(data_path+"SatData/vpair final.jpg")
     img = cv2.imread(data_path+"SatData/vpair final.jpg")
-    sat_features = sat_extractor.extract(sat_img.unsqueeze(0))
-    bounds = load_bonuds(data_path+"SatData/boundaries.txt")
     sat_res = (img.shape[0],img.shape[1])
+    sat_tiles = []
+    sat_features = []
+    fraci = int(sat_res[0]/5)
+    fracj = int(sat_res[1]/5)
+    for i in range(5):
+        for j in range(5):
+            tile = sat_img[:, i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj]
+            sat_features.append(sat_extractor.extract(tile.unsqueeze(0)))
+    bounds = load_bonuds(data_path+"SatData/boundaries.txt")
     target = []
     imgs = []
     features = []
@@ -90,5 +97,5 @@ def main(data_path,max_keypoints):
     validation(pred,target)
 
 
-main("./datasets/vpair/",2048)
+main("./datasets/vpair0-100/",2048)
         
