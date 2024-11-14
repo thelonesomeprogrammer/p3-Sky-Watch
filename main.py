@@ -72,11 +72,3 @@ def main(data_path,max_keypoints):
 
 main("./datasets/SkyWatchData/",2048)
         
-
-        
-
-        
-        
-
-
-
