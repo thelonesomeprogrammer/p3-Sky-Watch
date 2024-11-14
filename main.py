@@ -92,11 +92,3 @@ def main(data_path,max_keypoints):
 
 main("./datasets/vpair/",2048)
         
-
-        
-
-        
-        
-
-
-
