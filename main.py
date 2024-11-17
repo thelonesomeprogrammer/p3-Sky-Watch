@@ -32,7 +32,7 @@ def main(data_path,max_keypoints):
     for i in range(5):
         for j in range(5):
             tile = sat_img[:, i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj]
-            feature = sat_extractor.extract(tile.unsqueeze(0))
+            feature = sat_extractor.extract(tile.unsqueeze(0).to(device))
             feature["keypoints"][0][:, 0] += i*fraci
             feature["keypoints"][0][:, 1] += j*fracj
             sat_features.append(feature)
@@ -48,12 +48,12 @@ def main(data_path,max_keypoints):
         img.to(device)
         target.append([i[0],i[1],i[2]])
         imgs.append([i[0],img])
-        img_features = extractor.extract(img.unsqueeze(0))
+        img_features = extractor.extract(img.unsqueeze(0).to(device))
         all_keypoints = np.empty((0,3))
-        for i in sat_features:
-            img_matches = matcher({"image0": i, "image1": img_features})
+        for j in sat_features:
+            img_matches = matcher({"image0": j, "image1": img_features})
             print(img_matches)
-            sat_keypoints = np.asarray([[i["keypoints"][0][int(t)][0], i["keypoints"][0][int(t)][1],int(t)] for t in img_matches["matches1"][0] if not torch.all(t == -1)])
+            sat_keypoints = np.asarray([[j["keypoints"][0].cpu()[int(t.cpu())][0], j["keypoints"][0].cpu()[int(t.cpu())][1],int(t.cpu())] for t in img_matches["matches1"][0] if not torch.all(t == -1)])
             all_keypoints = np.concatenate((all_keypoints, sat_keypoints), axis=0)
         db = DBSCAN(eps=500, min_samples = 2).fit(all_keypoints[:,:2])
         labels = db.labels_

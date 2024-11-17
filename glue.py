@@ -214,12 +214,12 @@ def visualize_matches(image0, image1, feats0, feats1, matches, title=''):
 def main():
     """Main function to execute the image processing pipeline."""
     # Configuration
-    drone_images_dir = "drone"  # Directory containing drone images
-    satellite_images_dir = "sat"  # Directory containing satellite images
+    drone_images_dir = "datasets/vpair0-100/"  # Directory containing drone images
+    satellite_images_dir = "datasets/vpair0-100/SatData/"  # Directory containing satellite images
     drone_image_names = ["00078.png"]  # List of drone images
-    satellite_image_names = ["h.jpg"]  # List of satellite images
+    satellite_image_names = ["vpair final.jpg"]  # List of satellite images
 
-    tile_size = (1500, 1500)  # Adjusted tile size for better performance
+    tile_size = (1000, 1000)  # Adjusted tile size for better performance
     overlap = 250  # Reduced overlap to decrease number of tiles
     num_tile_matches_to_visualize = 1
     num_matches_per_tile = 10
@@ -263,8 +263,8 @@ def main():
     for i, tile_feats in enumerate(tqdm(features_tiles, desc=f"Matching tiles for '{sat_image_name}'")):
         # Match features
         matches = match_features(matcher, drone_feats, tile_feats, device)
+        print(matches)
         matched_indices = matches["matches0"]
-        print(type(matches["matches0"]))
         if matched_indices is not None:
             if isinstance(matched_indices, torch.Tensor):
                 num_valid = (matched_indices > -1).sum().item()
@@ -281,6 +281,7 @@ def main():
     # Define the function to get the number of valid matches
     def get_num_valid_matches(match_tuple):
         matches = match_tuple[1]
+        print(match_tuple)
         matched_indices = matches["matches0"]
         if matched_indices is not None:
             valid = matched_indices > -1
