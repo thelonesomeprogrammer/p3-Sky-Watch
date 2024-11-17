@@ -43,7 +43,7 @@ def main(data_path,max_keypoints):
     features = []
     matches = []
     pred = []
-    for i in data_set:
+    for i in data_set[:2]:
         img = load_image(data_path+i[0]+".png")
         img.to(device)
         target.append([i[0],i[1],i[2]])
@@ -52,10 +52,9 @@ def main(data_path,max_keypoints):
         all_keypoints = np.empty((0,3))
         for j in sat_features:
             img_matches = matcher({"image0": j, "image1": img_features})
-            print(img_matches)
             sat_keypoints = np.asarray([[j["keypoints"][0].cpu()[int(t.cpu())][0], j["keypoints"][0].cpu()[int(t.cpu())][1],int(t.cpu())] for t in img_matches["matches1"][0] if not torch.all(t == -1)])
             all_keypoints = np.concatenate((all_keypoints, sat_keypoints), axis=0)
-        db = DBSCAN(eps=500, min_samples = 2).fit(all_keypoints[:,:2])
+        db = DBSCAN(eps=100, min_samples = 5).fit(all_keypoints[:,:2])
         labels = db.labels_
 
 
@@ -79,9 +78,10 @@ def main(data_path,max_keypoints):
         unique_labels, counts = np.unique(labels[labels != -1], return_counts=True)  # Exclude noise (-1)
         try:
             largest_cluster_label = unique_labels[np.argmax(counts)]  # Label of the largest cluster
+            print(largest_cluster_label)
         except:
             continue
-        largest_cluster_points = sat_keypoints[labels == largest_cluster_label]  # Points in the largest cluster
+        largest_cluster_points = all_keypoints[labels == largest_cluster_label]  # Points in the largest cluster
 
         if len(largest_cluster_points) < 4:
             continue
