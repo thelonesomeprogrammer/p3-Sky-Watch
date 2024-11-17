@@ -18,7 +18,7 @@ def xy_to_coords(boundaries, sat_res, feature_coords):
     pix_lat_long_eq = [east_west / sat_res[0], north_south / sat_res[1]]
     loc_lat_long = []
     for i in feature_coords:
-        loc_lat_long.append([(boundaries[3] + (abs(i[0] * pix_lat_long_eq[0]))), boundaries[0] - (abs(i[1] * pix_lat_long_eq[1])), 0])
+        loc_lat_long.append([(boundaries[3] + (abs(i[1] * pix_lat_long_eq[0]))), boundaries[0] - (abs(i[0] * pix_lat_long_eq[1])), 0])
     return loc_lat_long
 
 def main(): ## test function
