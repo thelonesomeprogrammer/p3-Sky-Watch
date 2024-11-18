@@ -1,5 +1,6 @@
 torch
 opencv-python
 numpy
+scikit-learn
 git+https://github.com/cvg/LightGlue.git
 

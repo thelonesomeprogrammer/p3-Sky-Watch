@@ -204,7 +204,7 @@ def visualize_matches(image0, image1, feats0, feats1, matches, title=''):
     # Plot matches
     viz2d.plot_matches(m_kpts0, m_kpts1, color="lime", lw=0.5)
 
-    # Add text
+    # Add text 
     viz2d.add_text(0, title, fs=15)
 
     # Show plot
