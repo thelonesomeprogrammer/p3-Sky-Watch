@@ -28,8 +28,8 @@ def sky_deres_test(object_points, image_points):
 
 def vpair_test(object_points, image_points):
     camera_matrix = np.array([[750.62614972, 0, 402.41007535], [0, 750.26301185, 292.98832147], [0, 0, 1]])
-    #distortion_coeffs = np.array([-0.11592226392258145, 0.1332261251415265, -0.00043977637330175616, 0.0002380609784102606])
-    distortion_coeffs = np.zeros(4) # Distortion coefficients (assuming no distortion for simplicity)
+    distortion_coeffs = np.array([-0.11592226392258145, 0.1332261251415265, -0.00043977637330175616, 0.0002380609784102606])
+    #distortion_coeffs = np.zeros(4) # Distortion coefficients (assuming no distortion for simplicity)
     return pnp(object_points, image_points, camera_matrix, distortion_coeffs)
 
 
