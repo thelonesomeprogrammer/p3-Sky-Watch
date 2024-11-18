@@ -56,7 +56,7 @@ def main(data_path,max_keypoints):
     features = []
     matches = []
     pred = []
-    for i in data_set[:2]:
+    for i in data_set:
         img = cv2.imread(data_path+i[0]+".png")
         img, _ = rotate_image(img, -i[6]/math.pi*180)
         img = numpy_image_to_torch(img)
@@ -78,35 +78,35 @@ def main(data_path,max_keypoints):
         unique_labels, counts = np.unique(labels[labels != -1], return_counts=True)
 
         # Sort clusters by size (largest to smallest)
-        sorted_indices = np.argsort(-counts)  # Negative for descending order
-        sorted_labels = unique_labels[sorted_indices]
-        sorted_counts = counts[sorted_indices]
+        # sorted_indices = np.argsort(-counts)  # Negative for descending order
+        # sorted_labels = unique_labels[sorted_indices]
+        # sorted_counts = counts[sorted_indices]
 
         # Relabel clusters so the largest is "0", next largest is "1", etc.
-        new_labels = -np.ones_like(labels)  # Start with noise as -1
-        for j, label in enumerate(sorted_labels[:5]):  # Only relabel top 5 clusters
-            new_labels[labels == label] = j
+        # new_labels = -np.ones_like(labels)  # Start with noise as -1
+        # for j, label in enumerate(sorted_labels[:5]):  # Only relabel top 5 clusters
+        #     new_labels[labels == label] = j
 
         # Plotting
-        plt.figure(figsize=(10, 8))
-        colors = plt.get_cmap("tab10", 5)  # Limit to 5 colors
-
-        for label in range(5):  # Plot only top 5 clusters
-            if label in new_labels:
-                cluster_points = all_keypoints[new_labels == label]
-                plt.scatter(cluster_points[:, 0], cluster_points[:, 1], c=[colors(label)], label=f"Cluster {label}", zorder=2)
-
+        # plt.figure(figsize=(10, 8))
+        # colors = plt.get_cmap("tab10", 5)  # Limit to 5 colors
+        #
+        # for label in range(5):  # Plot only top 5 clusters
+        #     if label in new_labels:
+        #         cluster_points = all_keypoints[new_labels == label]
+        #         plt.scatter(cluster_points[:, 0], cluster_points[:, 1], c=[colors(label)], label=f"Cluster {label}", zorder=2)
+        #
         # Plot noise (if any)
-        noise_points = all_keypoints[new_labels == -1]
-        if len(noise_points) > 0:
-            plt.scatter(noise_points[:, 0], noise_points[:, 1], c='black', label="Noise", zorder=1)
-
-        plt.title("Top 5 Largest Clusters (Relabeled)")
-        plt.xlabel("X Coordinate")
-        plt.ylabel("Y Coordinate")
-        plt.legend(loc="upper right")
-        plt.imshow(sat_img, zorder=0)
-        plt.show()
+        # noise_points = all_keypoints[new_labels == -1]
+        # if len(noise_points) > 0:
+        #     plt.scatter(noise_points[:, 0], noise_points[:, 1], c='black', label="Noise", zorder=1)
+        #
+        # plt.title("Top 5 Largest Clusters (Relabeled)")
+        # plt.xlabel("X Coordinate")
+        # plt.ylabel("Y Coordinate")
+        # plt.legend(loc="upper right")
+        # plt.imshow(sat_img, zorder=0)
+        # plt.show()
 
 
         largest_cluster_label = unique_labels[np.argmax(counts)]  # Label of the largest cluster
