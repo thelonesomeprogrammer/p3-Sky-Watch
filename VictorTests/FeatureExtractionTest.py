@@ -256,7 +256,7 @@ def __main__():
     img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
     assert img is not None, f"Image not found at {img_path}"
 
-    TestType = "ScaleTest" 
+    TestType = "RotationTest" 
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f'Using device: {device}')
