@@ -2,106 +2,184 @@ import numpy as np
 import cv2 as cv
 import enum as Enum
 import matplotlib.pyplot as plt
+import torch
+
+from lightglue.utils import numpy_image_to_torch
+from lightglue.lightglue import LightGlue
+from lightglue import SuperPoint
 
 class FeatureType(Enum.Enum):
     SIFT = 0
     ORB = 1
     BRISK = 2
+    SUPERPOINT = 3
 
-def getFeatures(featureType):
+def getFeatures(featureType, extractor=None):
+    """
+    Initialize the feature extractor based on the FeatureType.
+    """
     if featureType == FeatureType.SIFT:
         return cv.SIFT_create(nfeatures=1000)
     elif featureType == FeatureType.ORB:
         return cv.ORB_create()
     elif featureType == FeatureType.BRISK:
         return cv.BRISK_create(thresh=80)
-    
+    elif featureType == FeatureType.SUPERPOINT:
+        assert extractor is not None, "SuperPoint extractor not initialized"
+        return extractor
+
 def getBFMatcher(featureType):
+    """
+    Initialize the BFMatcher based on the FeatureType.
+    """
     if featureType == FeatureType.SIFT:
         return cv.BFMatcher(cv.NORM_L2, crossCheck=False)
     elif featureType in (FeatureType.ORB, FeatureType.BRISK):
         return cv.BFMatcher(cv.NORM_HAMMING, crossCheck=False)
-    
-def getMatches(des1, des2, featureType):
-    
-    bf = getBFMatcher(featureType)
+    elif featureType == FeatureType.SUPERPOINT:
+        return None  # LightGlue will handle matching for SuperPoint
 
-    matches = bf.knnMatch(des1, des2, k=2)
+def getMatches(des1, des2, featureType, superpoint_matcher=None, kp1=None, kp2=None):
+    """
+    Match descriptors between two images using either BFMatcher or LightGlue.
+    """
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
-    
-    return good_matches
-    
-def getKeypoints(kp1, kp2, scale):
-    for kp in kp1:
-        kp.size *= (1 * scale)
+    if featureType == FeatureType.SUPERPOINT:
+        assert superpoint_matcher is not None, "LightGlue matcher must be provided"
 
-    for kp in kp2:
-        kp.size *= (1 * scale)
-        
-    return kp1, kp2
+        # Ensure kp1 and kp2 are NumPy arrays of shape [num_kpts, 2]
+        # and des1 and des2 are NumPy arrays of shape [num_kpts, desc_dim]
+        if kp1.size == 0 or kp2.size == 0:
+            return []
+
+        kp1_tensor = torch.from_numpy(kp1).unsqueeze(0).to(device)  # Shape: [1, num_kpts, 2]
+        kp2_tensor = torch.from_numpy(kp2).unsqueeze(0).to(device)  # Shape: [1, num_kpts, 2]
+        des1_tensor = torch.from_numpy(des1).unsqueeze(0).to(device)  # Shape: [1, num_kpts, desc_dim]
+        des2_tensor = torch.from_numpy(des2).unsqueeze(0).to(device)  # Shape: [1, num_kpts, desc_dim]
+
+        # Prepare input dictionary for LightGlue
+        data = {
+            "image0": {"keypoints": kp1_tensor, "descriptors": des1_tensor},
+            "image1": {"keypoints": kp2_tensor, "descriptors": des2_tensor},
+        }
+
+        # Debugging: print the keys of data
+        print(f"Passing keys to LightGlue: {list(data.keys())}")  # Should be ['image0', 'image1']
+
+        # Pass the data to LightGlue
+        img_matches = superpoint_matcher(data)
+
+        # Debugging: print the keys of img_matches
+        print(f"Matches returned by LightGlue: {list(img_matches.keys())}")
+
+        # Extract matches: matches0 contains indices of matches for image0
+        if "matches0" not in img_matches:
+            print("Error: 'matches0' not found in LightGlue output.")
+            return []
+        matches0 = img_matches["matches0"][0].cpu().numpy()
+        good_matches = [(i, m) for i, m in enumerate(matches0) if m != -1]
+        return good_matches
+    else:
+        # OpenCV-based matchers
+        bf = getBFMatcher(featureType)
+        if bf is None:
+            return []
+        if des1 is None or des2 is None:
+            return []
+        matches = bf.knnMatch(des1, des2, k=2)
+        good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
+        return good_matches
+
+def getKeypoints(kp1, kp2, scale, featureType):
+    """
+    Scale keypoints based on the transformation applied.
+    """
+    kp1_scaled = kp1 * scale
+    kp2_scaled = kp2 * scale
+    return kp1_scaled, kp2_scaled
 
 def getResizedImages(img, scale):
-    return cv.resize(img, (int(img.shape[1] * scale), int(img.shape[0] * scale)), interpolation = cv.INTER_AREA)
+    """
+    Resize the image by the given scale factor.
+    """
+    return cv.resize(img, (int(img.shape[1] * scale), int(img.shape[0] * scale)), interpolation=cv.INTER_AREA)
 
 def getRotatedImages(img, angle):
+    """
+    Rotate the image by the given angle.
+    """
     (h, w) = img.shape[:2]
     center = (w / 2, h / 2)
     rot_mat = cv.getRotationMatrix2D(center, angle, 1.0)
     result = cv.warpAffine(img, rot_mat, (w, h))
     return result
 
-def getKeypointImages(img, kp1, kp2):
-    return cv.drawKeypoints(img, kp1, None, flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS), cv.drawKeypoints(img, kp2, None, flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-
-def getGoodMatches(matches, featureType):
-    if featureType == FeatureType.ORB:
-        good = []
-        for m,n in matches:
-            if m.distance < 0.75*n.distance:
-                good.append([m])
-        return good
-    # elif featureType == FeatureType.SIFT or featureType == FeatureType.SURF or featureType == FeatureType.AKAZE:
-    #     for match in matches:
-    #         if match.distance < 0.75:
-    #             good.append(match)
-    # return good
-
-def runFeatureExtractionTest(TestType, img):
+def runFeatureExtractionTest(TestType, img, superpoint_extractor, superpoint_matcher):
+    """
+    Run feature extraction and matching tests for different feature types.
+    """
     # Define number of iterations based on test type
     if TestType == 'ScaleTest':
         Iterations = 20
     elif TestType == 'RotationTest':
         Iterations = 36
+    else:
+        raise ValueError("TestType must be 'ScaleTest' or 'RotationTest'")
 
-    pltArray = np.empty((3, Iterations))
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # Calculate match rate for each feature type: SIFT, ORB, BRISK
-    for i in range(3):
+    pltArray = np.empty((4, Iterations))  # Now 4 feature types
+
+    # Calculate match rate for each feature type
+    for i in range(4):  # Iterate over feature types
         FeatureTypeInstance = FeatureType(i)
-        algorithm = getFeatures(FeatureTypeInstance)
-        kp1, des1 = algorithm.detectAndCompute(img, None)
+        print(f'Feature Type: {FeatureTypeInstance.name}')
 
+        if FeatureTypeInstance == FeatureType.SUPERPOINT:
+            # Prepare image tensor for SuperPoint
+            img_tensor = numpy_image_to_torch(img).to(device)
+            features = superpoint_extractor.extract(img_tensor.unsqueeze(0))
+            kp1 = features["keypoints"][0].cpu().numpy()  # Shape: [num_kpts, 2]
+            des1 = features["descriptors"][0].cpu().numpy()
+        else:
+            # Use OpenCV feature extractors
+            algorithm = getFeatures(FeatureTypeInstance)
+            kp1_cv, des1 = algorithm.detectAndCompute(img, None)
+            if kp1_cv is None or des1 is None:
+                kp1 = np.array([], dtype=np.float32).reshape(-1, 2)
+                des1 = np.array([], dtype=np.float32).reshape(-1, algorithm.descriptorSize())
+            else:
+                kp1 = np.array([kp.pt for kp in kp1_cv], dtype=np.float32)
+
+        # Initialize transformation parameters
         angle = 0
+        scale = 0.2 if TestType == 'ScaleTest' else 1
 
-        if TestType == 'ScaleTest':
-            scale = 0.2
-        elif TestType == 'RotationTest':
-            scale = 1
-
-        scale = round(scale, 1)
-
-        for j in range(0, Iterations):
+        for j in range(Iterations):
             if TestType == 'ScaleTest':
                 TransformedSrc = getResizedImages(img, scale)
+                current_scale = scale
                 scale = round(scale + 0.1, 1)
             elif TestType == 'RotationTest':
                 TransformedSrc = getRotatedImages(img, angle)
+                current_angle = angle
                 angle += 10
 
-            # Re-initialize the algorithm for the transformed image
-            algorithm = getFeatures(FeatureTypeInstance)
-            kp2, des2 = algorithm.detectAndCompute(TransformedSrc, None)
+            # Extract features from the transformed image
+            if FeatureTypeInstance == FeatureType.SUPERPOINT:
+                src_tensor = numpy_image_to_torch(TransformedSrc).to(device)
+                features2 = superpoint_extractor.extract(src_tensor.unsqueeze(0))
+                kp2 = features2["keypoints"][0].cpu().numpy()
+                des2 = features2["descriptors"][0].cpu().numpy()
+            else:
+                algorithm = getFeatures(FeatureTypeInstance)
+                kp2_cv, des2 = algorithm.detectAndCompute(TransformedSrc, None)
+                if kp2_cv is None or des2 is None:
+                    kp2 = np.array([], dtype=np.float32).reshape(-1, 2)
+                    des2 = np.array([], dtype=np.float32).reshape(-1, algorithm.descriptorSize())
+                else:
+                    kp2 = np.array([kp.pt for kp in kp2_cv], dtype=np.float32)
 
             # Convert descriptors to the same type if necessary
             if des1.dtype != des2.dtype:
@@ -109,56 +187,89 @@ def runFeatureExtractionTest(TestType, img):
                 des2 = des2.astype(np.float32)
 
             # Rescale keypoints based on scale to match resized image
-            kp1, kp2 = getKeypoints(kp1, kp2, scale)
+            if TestType == 'ScaleTest':
+                kp1_scaled, kp2_scaled = getKeypoints(kp1, kp2, current_scale, FeatureTypeInstance)
+            else:
+                # For RotationTest, scale remains 1
+                kp1_scaled, kp2_scaled = getKeypoints(kp1, kp2, 1, FeatureTypeInstance)
 
-            matches = getMatches(des1, des2, FeatureTypeInstance)
+            # Match features
+            if FeatureTypeInstance == FeatureType.SUPERPOINT:
+                if kp1_scaled.size == 0 or kp2_scaled.size == 0:
+                    matches = []
+                else:
+                    matches = getMatches(
+                        des1, des2, FeatureTypeInstance,
+                        superpoint_matcher=superpoint_matcher,
+                        kp1=kp1_scaled, kp2=kp2_scaled
+                    )
+            else:
+                if kp1_scaled.size == 0 or kp2_scaled.size == 0:
+                    matches = []
+                else:
+                    matches = getMatches(des1, des2, FeatureTypeInstance)
 
             # Calculate match rate as percentage of keypoints matched
-            MatchRate = len(matches) / len(kp1) * 100
+            MatchRate = len(matches) / len(kp1_scaled) * 100 if len(kp1_scaled) > 0 else 0
+
             pltArray[i, j] = MatchRate
 
             # Debugging output
-            print(f'Number of Keypoints (Image 1): {len(kp1)}')
-            print(f'Number of Keypoints (Image 2): {len(kp2)}')
+            print(f'Iteration {j+1}/{Iterations}')
+            print(f'Number of Keypoints (Image 1): {len(kp1_scaled)}')
+            print(f'Number of Keypoints (Image 2): {len(kp2_scaled)}')
             if TestType == 'ScaleTest':
-                print(f'Scale: {scale}')
+                print(f'Scale: {current_scale}')
             elif TestType == 'RotationTest':
-                print(f'Angle: {angle}')
-            print(f'Number of Matches: {len(matches)}\n')
+                print(f'Angle: {current_angle}')
+            print(f'Number of Matches: {len(matches)}')
+            print(f'Match Rate: {MatchRate:.2f}%\n')
 
     return pltArray
-
 def plotMatchRate(pltArray, TestType):
+    """
+    Plot the match rate for different feature types across transformations.
+    """
     if TestType == 'ScaleTest':
         x = np.arange(0.2, 2.2, 0.1)
     elif TestType == 'RotationTest':
         x = np.arange(0, 360, 10)
 
-    y1 = pltArray[0]
-    y2 = pltArray[1]
-    y3 = pltArray[2]
+    labels = ['SIFT', 'ORB', 'BRISK', 'SuperPoint']
 
-    print(np.round(pltArray))
-
-    plt.plot(x, y1, label='SIFT')
-    plt.plot(x, y2, label='ORB')
-    plt.plot(x, y3, label='BRISK')
+    for i in range(4):
+        plt.plot(x, pltArray[i], label=labels[i])
 
     plt.legend()
     plt.xticks(x[::2])    
-    plt.xlabel('Scale')
-    plt.ylabel('Match Rate')
-    plt.title('Match Rate vs Scale')
+    plt.xlabel('Scale' if TestType == "ScaleTest" else 'Angle')
+    plt.ylabel('Match Rate (%)')
+    plt.title(f'Match Rate vs {"Scale" if TestType == "ScaleTest" else "Rotation"}')
+    plt.grid(True)
     plt.show()
 
 def __main__():
-    img = cv.imread('datasets/vpair/00074.png', cv.IMREAD_GRAYSCALE)
+    """
+    Main function to execute the feature extraction and matching tests.
+    """
+    img_path = "datasets/vpair0-100/00074.png"
+    img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
+    assert img is not None, f"Image not found at {img_path}"
 
-    # Define test type: ScaleTest or RotationTest
-    TestType = 'ScaleTest'
+    TestType = "RotationTest" 
 
-    pltArray = runFeatureExtractionTest(TestType, img)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f'Using device: {device}')
 
+    # Initialize SuperPoint extractor and LightGlue matcher
+    superpoint_extractor = SuperPoint(max_num_keypoints=1024).eval().to(device)
+    superpoint_matcher = LightGlue(features="superpoint").eval().to(device)
+
+    # Run the feature extraction and matching test
+    pltArray = runFeatureExtractionTest(TestType, img, superpoint_extractor, superpoint_matcher)
+
+    # Plot the match rates
     plotMatchRate(pltArray, TestType)
 
-__main__()
+if __name__ == "__main__":
+    __main__()
