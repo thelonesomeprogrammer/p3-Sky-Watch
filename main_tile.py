@@ -30,20 +30,30 @@ def main(data_path,max_keypoints):
     sat_res = (sat_img.shape[0],sat_img.shape[1])
     sat_tiles = []
     sat_features = []
-    fraci = int(sat_res[0]/7)
-    fracj = int(sat_res[1]/7)
-    for i in range(7):
-        for j in range(7):
-            tile = sat_tensor[:, i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj]
+    fraci = int(sat_res[0]/8) # 6 + 2 for overlap
+    fracj = int(sat_res[1]/12) # 9 + 3 for overlap
+    for i in range(8):
+        for j in range(12):
+            if i == 0:
+                i_lower = i*fraci
+            else:
+                i_lower = int(i * fraci - fraci / 3)
+
+            if j == 0:
+                j_lower = j * fracj
+            else:
+                j_lower = int(j * fracj - fracj / 3)
+
+            tile = sat_tensor[:, i_lower:(i+1)*fraci, j_lower:(j+1)*fracj]
             feature = sat_extractor.extract(tile.unsqueeze(0).to(device))
 
 
             # fig, axs = plt.subplots(2)
-            # axs[0].imshow(sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj], zorder=0)
+            # axs[0].imshow(sat_img[i_lower:(i+1)*fraci, j_lower:(j+1)*fracj], zorder=0)
             # axs[0].scatter(feature["keypoints"].cpu()[0][:,0], feature["keypoints"].cpu()[0][:,1], zorder=1)
             
-            feature["keypoints"][0][:, 1] += i*fraci
-            feature["keypoints"][0][:, 0] += j*fracj
+            feature["keypoints"][0][:, 1] += i_lower
+            feature["keypoints"][0][:, 0] += j_lower
 
             # axs[1].imshow(sat_img, zorder=0)
             # axs[1].scatter(feature["keypoints"].cpu()[0][:,0], feature["keypoints"].cpu()[0][:,1], zorder=1)

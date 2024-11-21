@@ -30,10 +30,10 @@ def main(data_path,max_keypoints):
     sat_res = (sat_img.shape[0],sat_img.shape[1])
     sat_tiles = []
     sat_features = []
-    fraci = int(sat_res[0]/6)
-    fracj = int(sat_res[1]/9)
-    for i in range(6):
-        for j in range(9):
+    fraci = int(sat_res[0]/7)
+    fracj = int(sat_res[1]/7)
+    for i in range(7):
+        for j in range(7):
             tile = sat_tensor[:, i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj]
             feature = sat_extractor.extract(tile.unsqueeze(0).to(device))
 
