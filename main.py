@@ -120,16 +120,23 @@ def main(data_path,max_keypoints):
             ] for t in largest_cluster_points[:,2]], dtype=np.float32)
 
 
-        F, mask = cv2.findFundamentalMat(img_keypoints, largest_cluster_points[:,:2], method=cv2.FM_RANSAC, ransacReprojThreshold=5.0)
+        F, mask = cv2.findFundamentalMat(img_keypoints, largest_cluster_points[:,:2], method=cv2.USAC_MAGSAC, ransacReprojThreshold=5.0)
+
 
         # Filter points based on the mask
         sat_cords = largest_cluster_points[:,:2][mask.ravel() == 1]
         img_cords = img_keypoints[mask.ravel() == 1]
 
+        
+        plt.figure(figsize=(10, 8))
+        plt.scatter(sat_cords[:,0], sat_cords[:, 1], c='black', label="Noise", zorder=1)
+        plt.imshow(sat_img, zorder=0)
+        plt.show()
 
         latlong = np.asarray(xy_to_coords(bounds, sat_res, sat_cords), dtype=np.float32)
         cam = vpair_test([latlong],[img_cords])[0]
         pred.append([int(i[0]),cam[1][0],cam[0][0]])
+        print(str([int(i[0]),cam[1][0],cam[0][0]])+str("\n"))
     print(pred)
 
     validation(pred,target)

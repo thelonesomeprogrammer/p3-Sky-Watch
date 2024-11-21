@@ -80,7 +80,6 @@ def main(data_path,max_keypoints):
         # Sort clusters by size (largest to smallest)
         sorted_indices = np.argsort(-counts)  # Negative for descending order
         sorted_labels = unique_labels[sorted_indices]
-        sorted_counts = counts[sorted_indices]
 
         # Relabel clusters so the largest is "0", next largest is "1", etc.
         new_labels = -np.ones_like(labels)  # Start with noise as -1
