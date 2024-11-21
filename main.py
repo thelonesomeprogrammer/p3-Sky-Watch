@@ -120,7 +120,7 @@ def main(data_path,max_keypoints):
             ] for t in largest_cluster_points[:,2]], dtype=np.float32)
 
 
-        F, mask = cv2.findFundamentalMat(img_keypoints, largest_cluster_points[:,:2], method=cv2.USAC_MAGSAC, ransacReprojThreshold=5.0)
+        F, mask = cv2.findFundamentalMat(img_keypoints, largest_cluster_points[:,:2], method=cv2.USAC_MAGSAC, ransacReprojThreshold=1.0, confidence = 0.95, maxIters=4000)
 
 
         # Filter points based on the mask
