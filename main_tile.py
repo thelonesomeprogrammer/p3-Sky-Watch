@@ -89,6 +89,7 @@ def main(data_path,max_keypoints):
         latlong = np.asarray(xy_to_coords(bounds, sat_res, all_keypoints[:,:2]), dtype=np.float32)
         cam = vpair_test([latlong],[img_keypoints])[0]
         pred.append([int(i[0]),cam[1][0],cam[0][0]])
+        print(str([int(i[0]),cam[1][0],cam[0][0]])+str("\n"))
     print(pred)
 
     validation(pred,target)

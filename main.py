@@ -12,9 +12,10 @@ from lightglue import SuperPoint
 
 from validation import load_csv_to_arr
 from coords import xy_to_coords, load_bonuds
-from validation import validation
-from pnp import vpair_test
+from validation import validation, cal_dist
+from pnp import vpair_test, vpair_test_ransac
 from rotation import rotate_image
+from geofilter import geofilter
 
 
 
@@ -55,7 +56,9 @@ def main(data_path,max_keypoints):
     target = []
     features = []
     matches = []
-    pred = []
+    pred_usac = []
+    pred_ransac = []
+    pred_geo = []
     for i in data_set:
         img = cv2.imread(data_path+i[0]+".png")
         img, _ = rotate_image(img, -i[6]/math.pi*180)
@@ -119,27 +122,49 @@ def main(data_path,max_keypoints):
             int(img_features["keypoints"][0][int(t)][1]),
             ] for t in largest_cluster_points[:,2]], dtype=np.float32)
 
+        geo_img_cords, geo_sat_cords = geofilter(img_keypoints, largest_cluster_points[:,:2], 5, 3)
 
-        F, mask = cv2.findFundamentalMat(img_keypoints, largest_cluster_points[:,:2], method=cv2.USAC_MAGSAC, ransacReprojThreshold=1.0, confidence = 0.95, maxIters=4000)
+        latlong = np.asarray(xy_to_coords(bounds, sat_res, geo_sat_cords), dtype=np.float32)
+        cam = vpair_test([latlong],[geo_img_cords])[0]
+
+        pred_geo.append([int(i[0]),cam[1][0],cam[0][0]])
+        print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
 
 
-        # Filter points based on the mask
-        sat_cords = largest_cluster_points[:,:2][mask.ravel() == 1]
-        img_cords = img_keypoints[mask.ravel() == 1]
+        for huhuhuh in range(3):
+            latlong = np.asarray(xy_to_coords(bounds, sat_res, largest_cluster_points[:,:2]), dtype=np.float32)
+            cam = vpair_test_ransac([latlong],[img_keypoints])[0]
 
-        
-        plt.figure(figsize=(10, 8))
-        plt.scatter(sat_cords[:,0], sat_cords[:, 1], c='black', label="Noise", zorder=1)
-        plt.imshow(sat_img, zorder=0)
-        plt.show()
+            if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
+                break
 
-        latlong = np.asarray(xy_to_coords(bounds, sat_res, sat_cords), dtype=np.float32)
-        cam = vpair_test([latlong],[img_cords])[0]
-        pred.append([int(i[0]),cam[1][0],cam[0][0]])
-        print(str([int(i[0]),cam[1][0],cam[0][0]])+str("\n"))
+        pred_ransac.append([int(i[0]),cam[1][0],cam[0][0]])
+        print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
+
+
+        for huhuhuh in range(3):
+            F, mask = cv2.findFundamentalMat(img_keypoints, largest_cluster_points[:,:2], method=cv2.USAC_MAGSAC, ransacReprojThreshold=1.0, confidence = 0.95, maxIters=4000)
+
+            # Filter points based on the mask
+            sat_cords = largest_cluster_points[:,:2][mask.ravel() == 1]
+            img_cords = img_keypoints[mask.ravel() == 1]
+
+            latlong = np.asarray(xy_to_coords(bounds, sat_res, sat_cords), dtype=np.float32)
+            cam = vpair_test([latlong],[img_cords])[0]
+
+            if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
+                break
+
+
+        pred_usac.append([int(i[0]),cam[1][0],cam[0][0]])
+        print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
     print(pred)
 
-    validation(pred,target)
+    validation(pred_geo,target)
+    print("\n\n--------------------------------------------------------------------------------\n\n")
+    validation(pred_ransac,target)
+    print("\n\n--------------------------------------------------------------------------------\n\n")
+    validation(pred_usac,target)
 
 
 main("./datasets/vpair/",2048)

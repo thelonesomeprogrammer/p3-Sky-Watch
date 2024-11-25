@@ -13,6 +13,18 @@ def pnp(object_points, image_points, camera_matrix, dist_coeffs):
     return cam_coords
 
 
+def pnp_ransac(object_points, image_points, camera_matrix, dist_coeffs):
+
+    cam_coords = []
+    for i, v in enumerate(object_points):
+        success, R, T, inlie = cv2.solvePnPRansac(v, image_points[i], camera_matrix, dist_coeffs,iterationsCount=1000, reprojectionError = 2.0) # Solve for rotation and translation vectors
+        rotation_matrix, _ = cv2.Rodrigues(R) # Convert rotation vector to rotation matrix
+
+        cam_coords.append(-np.dot(rotation_matrix.T, T)) # Calculate the camera position in world coordinates
+
+    return cam_coords
+
+
 def sky_vores_test(object_points, image_points):
     camera_matrix = np.array([[3400, 0, 1929], [0, 3400, 1091], [0, 0, 1]], dtype=np.float32) # Camera intrinsic parameters
     distortion_coeffs = np.zeros(4) # Distortion coefficients (assuming no distortion for simplicity)
@@ -32,6 +44,12 @@ def vpair_test(object_points, image_points):
     #distortion_coeffs = np.zeros(4) # Distortion coefficients (assuming no distortion for simplicity)
     return pnp(object_points, image_points, camera_matrix, distortion_coeffs)
 
+
+def vpair_test_ransac(object_points, image_points):
+    camera_matrix = np.array([[750.62614972, 0, 402.41007535], [0, 750.26301185, 292.98832147], [0, 0, 1]])
+    distortion_coeffs = np.array([-0.11592226392258145, 0.1332261251415265, -0.00043977637330175616, 0.0002380609784102606])
+    #distortion_coeffs = np.zeros(4) # Distortion coefficients (assuming no distortion for simplicity)
+    return pnp(object_points, image_points, camera_matrix, distortion_coeffs)
 
 if __name__ == "__main__":
     sky_object_points = np.array([
