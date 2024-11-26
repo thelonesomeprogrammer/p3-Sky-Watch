@@ -1,7 +1,6 @@
 import math 
 import numpy as np
 import csv
-from pnp import sky_deres_test, sky_vores_test
 
 
 
@@ -53,7 +52,7 @@ def validation(pred, targets):
 
     dist_list = np.asanyarray(cal_dist(pred_list, targets)) ## calculate the distance between prediction and target
     successlist = np.where(dist_list <= 50)[0] ## take the data that is within our 50m delta goal
-    successrate = len(successlist) / len(dist_list) * 100 ## calculate success rate (how often do we hit within the 50m goal)
+    successrate = len(successlist) / (len(dist_list)+0.000001) * 100 ## calculate success rate (how often do we hit within the 50m goal)
     meanerror = dist_list.mean() ## calculate mean error
     avg_hit = np.asanyarray(hit_deltas).mean() ## calculate mean hit frequency (mean distance in target images between hits) 
     print("dist_list: "+str(dist_list)) ## print stats
@@ -65,45 +64,8 @@ def validation(pred, targets):
 
 
 if __name__ == "__main__":
-    data = load_csv_to_arr('./Billed Data/GNSS_data.csv')
-    object_points = np.array([
-        [
-            [9.873987, 56.892982, 0],
-            [9.875228, 56.892752, 0],
-            [9.874458, 56.892741, 0],
-            [9.874862, 56.893140, 0],
-        ],[
-            [9.872404, 56.890317, 0],
-            [9.872010, 56.889679, 0],
-            [9.870411, 56.890067, 0],
-            [9.871091, 56.889904, 0],
-        ]
-    ], dtype=np.float32) # lat long alt af punkter
-    image_points = np.array([
-        [
-            [3178, 1711],
-            [1700, 331],
-            [2840, 806],
-            [1812, 1665]
-        ],[
-            [3467, 520],
-            [217, 735],
-            [3264, 2055],
-            [1643, 1413]
-        ]], dtype=np.float32) # x y i billeder 
-    targets = [data[360][0],data[389][0]]
-    Pred = sky_vores_test(object_points,image_points)
-    fake_Pred = []
-    for i,v in enumerate(Pred):
-        fake_Pred.append([targets[i],v[1][0],v[0][0]])
-
-    validation(fake_Pred,data)
-
-    Pred = sky_deres_test(object_points,image_points)
-    fake_Pred = []
-    for i,v in enumerate(Pred):
-        fake_Pred.append([targets[i],v[1][0],v[0][0]])
-
+    data = load_csv_to_arr('../datasets/SkyWatchData/GNSS_data.csv')
+    fake_Pred = [data[2][0],data[1][1],data[1][2]]
     validation(fake_Pred,data)
 
 #hvor mange procent af vores predictions/bereninger er under 50m (succesrate)

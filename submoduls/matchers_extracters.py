@@ -26,7 +26,7 @@ class BFMatch:
     def __init__(self):
         self.bf = cv2.BFMatcher(crossCheck=False)
 
-    def match(self, keypoints0, descriptors0, size0, keypoints1, descriptors1, size1):
+    def match(self, keypoints0, descriptors0, keypoints1, descriptors1):
             matches = self.bf.knnMatch(descriptors0, descriptors1, k=2)
 
 
@@ -51,7 +51,7 @@ class LightMatch:
         self.device = device
         self.matcher = LightGlue(features = features).eval().to(device)
 
-    def match_tensor(self, keypoints0, descriptors0, size0, keypoints1, descriptors1, size1):
+    def match(self, keypoints0, descriptors0, keypoints1, descriptors1):
         match_dict = self.matcher.forward({
             "image0": {
                 "keypoints":keypoints0.unsqueeze(0).to(self.device),
