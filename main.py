@@ -6,10 +6,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.cluster import DBSCAN
 
-from lightglue.utils import rbd, numpy_image_to_torch
-from lightglue.lightglue import LightGlue
-from lightglue import SuperPoint
-
+from extracters import SuperExtract, LightMatch, SiftExtract, BFMatch
 from validation import load_csv_to_arr
 from coords import xy_to_coords, load_bonuds
 from validation import validation, cal_dist
@@ -19,15 +16,15 @@ from geofilter import geofilter
 
 
 
+
+
 def main(data_path,max_keypoints):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
-    extractor = SuperPoint(max_num_keypoints=max_keypoints).eval().to(device)
-    sat_extractor = SuperPoint(max_num_keypoints=max_keypoints).eval().to(device)
-    matcher = LightGlue(features="superpoint").eval().to(device)
+    extractor = SiftExtract()
+    matcher = BFMatch()
     data_set = load_csv_to_arr(data_path+"GNSS_data_test.csv")
     sat_img = cv2.imread(data_path+"SatData/vpair final 2.jpg")
-    sat_tensor = numpy_image_to_torch(sat_img)
     sat_res = (sat_img.shape[0],sat_img.shape[1])
     sat_tiles = []
     sat_features = []
@@ -35,22 +32,22 @@ def main(data_path,max_keypoints):
     fracj = int(sat_res[1]/9)
     for i in range(6):
         for j in range(9):
-            tile = sat_tensor[:, i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj]
-            feature = sat_extractor.extract(tile.unsqueeze(0).to(device))
+            tile = sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj]
+            kp, des = extractor.extract(tile)
 
 
             # fig, axs = plt.subplots(2)
             # axs[0].imshow(sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj], zorder=0)
-            # axs[0].scatter(feature["keypoints"].cpu()[0][:,0], feature["keypoints"].cpu()[0][:,1], zorder=1)
+            # axs[0].scatter(kp.cpu()[:,0], kp.cpu()[:,1], zorder=1)
             
-            feature["keypoints"][0][:, 1] += i*fraci
-            feature["keypoints"][0][:, 0] += j*fracj
+            kp[:, 1] += i*fraci
+            kp[:, 0] += j*fracj
 
             # axs[1].imshow(sat_img, zorder=0)
-            # axs[1].scatter(feature["keypoints"].cpu()[0][:,0], feature["keypoints"].cpu()[0][:,1], zorder=1)
+            # axs[1].scatter(kp.cpu()[:,0], kp.cpu()[:,1], zorder=1)
             # plt.show()
 
-            sat_features.append(feature)
+            sat_features.append([kp, des])
             
     bounds = load_bonuds(data_path+"SatData/boundaries.txt")
     target = []
@@ -62,15 +59,13 @@ def main(data_path,max_keypoints):
     for i in data_set:
         img = cv2.imread(data_path+i[0]+".png")
         img, _ = rotate_image(img, -i[6]/math.pi*180)
-        img = numpy_image_to_torch(img)
-        img.to(device)
         target.append([i[0],i[1],i[2]])
 
-        img_features = extractor.extract(img.unsqueeze(0).to(device))
+        img_kp, img_des = extractor.extract(img)
         all_keypoints = np.empty((0,3))
         for j in sat_features:
-            img_matches = matcher({"image0": j, "image1": img_features})
-            sat_keypoints = np.asarray([[j["keypoints"][0].cpu()[int(t.cpu())][0], j["keypoints"][0].cpu()[int(t.cpu())][1],int(t.cpu())] for t in img_matches["matches1"][0] if not torch.all(t == -1)])
+            img_matches = matcher.match(j[0],j[1],np.array([[fraci,fracj]]),img_kp,img_des,[img.shape])
+            sat_keypoints = np.asarray([[j[0][int(t)][0], j[0][int(t)][1], int(img_matches[1][index])] for index, t in enumerate(img_matches[0])])
             if len(sat_keypoints) != 0:
                 all_keypoints = np.concatenate((all_keypoints, sat_keypoints), axis=0)
         db = DBSCAN(eps=50, min_samples = 5).fit(all_keypoints[:,:2])
@@ -117,10 +112,7 @@ def main(data_path,max_keypoints):
 
         if len(largest_cluster_points) < 4:
             continue
-        img_keypoints = np.asarray([[
-            int(img_features["keypoints"][0][int(t)][0]),
-            int(img_features["keypoints"][0][int(t)][1]),
-            ] for t in largest_cluster_points[:,2]], dtype=np.float32)
+        img_keypoints = np.asarray([[int(kp[int(t)][0]),int(kp[int(t)][1])] for t in largest_cluster_points[:,2]], dtype=np.float32)
 
         geo_img_cords, geo_sat_cords = geofilter(img_keypoints, largest_cluster_points[:,:2], 5, 3)
 
