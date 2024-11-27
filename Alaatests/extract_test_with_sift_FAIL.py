@@ -11,9 +11,9 @@ import os
 FOCAL_LENGTH = 4.5 / 1000          # Focal length in mm
 SENSOR_WIDTH = 6.17 / 1000         # Sensor width in mm
 MAX_IMAGE_DIMENSION = 8000         # Maximum allowed image dimension (adjust as needed)
-TILE_SIZE = 500                   # Size of each tile in pixels (adjust based on your needs)
-TILE_OVERLAP = 100                 # Overlap between tiles in pixels (optional)
-TOP_N_MATCHES = 3                 # Number of top matching tiles to retrieve
+TILE_SIZE = 1000                   # Size of each tile in pixels (adjust based on your needs)
+TILE_OVERLAP = 500                 # Overlap between tiles in pixels (optional)
+TOP_N_MATCHES = 10                 # Number of top matching tiles to retrieve
 
 # LBP Parameters
              # Weight for LBP similarity in combined score
@@ -47,11 +47,11 @@ def divide_into_tiles(image, tile_size, overlap):
 # Main processing function
 def process_images(satellite_image_path, drone_images_path_list, flight_data_csv):
     # Load satellite image
-    sat_image_original = cv2.imread(satellite_image_path)
+    sat_image_original = cv2.imread(satellite_image_path, cv2.IMREAD_GRAYSCALE)
     if sat_image_original is None:
         print("Error loading satellite image.")
         return
-   
+
     # Read flight data
     try:
         flight_data = pd.read_csv(flight_data_csv)
@@ -69,12 +69,12 @@ def process_images(satellite_image_path, drone_images_path_list, flight_data_csv
 
     # Initialize SIFT detector
     sift = cv2.SIFT_create(nfeatures=1000, nOctaveLayers=3,
-                           contrastThreshold=0.1, edgeThreshold=15, sigma=1.8)
+                           contrastThreshold=0.06, edgeThreshold=10, sigma=1.6)
 
-    # # Initialize FLANN matcher
-    # FLANN_INDEX_KDTREE = 255
+    # Initialize FLANN matcher
+    # FLANN_INDEX_KDTREE = 1
     # index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=1)
-    # search_params = dict(checks=100)
+    # search_params = dict(checks=50)
     # flann = cv2.FlannBasedMatcher(index_params, search_params)
 
     bf = cv2.BFMatcher( cv2.NORM_L2, crossCheck=False)
@@ -85,8 +85,14 @@ def process_images(satellite_image_path, drone_images_path_list, flight_data_csv
         print(f"\nProcessing {drone_image_path}")
 
         # Load drone image
-        drone = cv2.imread(drone_image_path)
-       
+        drone_image = cv2.imread(drone_image_path)
+        if drone_image is None:
+            print(f"Error loading {drone_image_path}")
+            continue
+
+        # Convert drone image to grayscale
+        drone = cv2.cvtColor(drone_image, cv2.COLOR_BGR2GRAY)
+
         # Drone image dimensions
         image_width_px = drone.shape[1]
         image_height_px = drone.shape[0]
@@ -95,8 +101,6 @@ def process_images(satellite_image_path, drone_images_path_list, flight_data_csv
 
         # Detect and compute features in drone image
         kp_drone, des_drone = sift.detectAndCompute(drone, None)
-        #plot keypoints as diagram
-
 
         # Extract keypoint coordinates from kp_drone
         kp_drone_pts = np.array([kp.pt for kp in kp_drone], dtype=np.float32)
@@ -113,21 +117,21 @@ def process_images(satellite_image_path, drone_images_path_list, flight_data_csv
                 continue
            
             # Extract keypoint coordinates from kp_sat
+            kp_sat_pts = np.array([kp.pt for kp in kp_sat], dtype=np.float32)
             # matches = flann.knnMatch(des_drone, des_sat, k=2)
-            matches = bf.knnMatch(des_drone ,des_sat, k=2)
-            # # Apply Lowe's ratio test
+            matches = bf.knnMatch(des_sat ,des_drone,k=2)
+            # Apply Lowe's ratio test
             good_matches = []
             for m, n in matches:
-                if m.distance < 0.75 * n.distance:
+                if m.distance < 0.7 * n.distance:
                     good_matches.append(m)
 
             if len(good_matches) < 4:
                 continue  # Not enough matches to compute homography
 
             # Extract matched keypoints
-            src_pts = np.float32([kp_drone[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-            dst_pts = np.float32([kp_sat[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-
+            src_pts = kp_drone_pts[[m.queryIdx for m in good_matches]]
+            dst_pts = kp_sat_pts[[m.trainIdx for m in good_matches]]
 
             # Compute homography
             H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
@@ -199,12 +203,10 @@ def process_images(satellite_image_path, drone_images_path_list, flight_data_csv
             # Process top_matches as needed, e.g., sort and select top N
 
 if __name__ == "__main__":
-    satellite_image_path = "tysk1.jpg"  # Replace with your satellite image path
+    satellite_image_path = "tysk.jpg"  # Replace with your satellite image path
     drone_images_path_list = [
         "1313.jpeg"
     ]
     flight_data_csv = "poses.csv"  # Replace with your flight data CSV path
-
-
 
     process_images(satellite_image_path, drone_images_path_list, flight_data_csv)
