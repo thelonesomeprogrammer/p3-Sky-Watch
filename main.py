@@ -22,8 +22,8 @@ from submoduls.point_selector import ClusterSelector, TileSelector
 def main(data_path,max_keypoints):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
-    extractor = SuperExtract(max_keypoints,device)
-    matcher = LightMatch("superpoint",device)
+    extractor = SiftExtract(max_keypoints)
+    matcher = LightMatch("sift",device)
     tiler = NoLap()
     selector = ClusterSelector()
     pnp = PnP.vpair_init()
@@ -39,6 +39,9 @@ def main(data_path,max_keypoints):
     pred_geo = []
     for i in data_set:
         img = cv2.imread(data_path+i[0]+".png")
+        print(data_path+i[0]+".png")
+        print(data_path+i[0]+".png")
+        print(data_path+i[0]+".png")
         img, _ = rotate_image(img, -i[6]/math.pi*180)
         target.append([i[0],i[1],i[2]])
 
