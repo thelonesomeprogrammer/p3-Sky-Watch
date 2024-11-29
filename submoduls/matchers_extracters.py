@@ -29,14 +29,24 @@ class BFMatch:
     def __init__(self):
         self.bf = cv2.BFMatcher(crossCheck=False)
 
-    def match(self, keypoints0, descriptors0, keypoints1, descriptors1):
-            matches = self.bf.knnMatch(descriptors0, descriptors1, k=2)
+    def match(self, features0, features1, k = 2):
+            matches = self.bf.knnMatch(features0.descriptors, features1.descriptors, k = k)
 
 
             matched_kp1 = [m[0].trainIdx for m in matches]
             matched_kp0 = [m[0].queryIdx for m in matches]
             return matched_kp0, matched_kp1
 
+class FlannMatch:
+    def __init__(self, index_params = dict(algorithm=5, trees=1 ), search_params = dict(checks=50 )):
+        self.flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+    def match(self, features0, features1, k = 2):
+        matches = self.flann.knnMatch(features0.descriptors, features1.descriptors, k = k)
+
+        matched_kp1 = [m[0].trainIdx for m in matches]
+        matched_kp0 = [m[0].queryIdx for m in matches]
+        return matched_kp0, matched_kp1
 
 class SuperExtract:
     def __init__(self, max_keypoints, device):

@@ -7,13 +7,14 @@ import matplotlib.pyplot as plt
 
 from util.validation import load_csv_to_arr, validation, cal_dist
 
-from submoduls.matchers_extracters import SuperExtract, LightMatch, SiftExtract, BFMatch
+from submoduls.matchers_extracters import SuperExtract, LightMatch, SiftExtract, BFMatch, FlannMatch
 from submoduls.coords import xy_to_coords, load_bonuds
 from submoduls.pnp import PnP
 from submoduls.rotation import rotate_image
 from submoduls.filter import geofilter
 from submoduls.tiler import NoLap, MOverLap, AlaaLap
 from submoduls.point_selector import ClusterSelector, TileSelector
+from submoduls.preproces import MultiProcess
 
 
 
@@ -23,13 +24,15 @@ def main(data_path,max_keypoints):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
     extractor = SiftExtract(max_keypoints)
-    matcher = LightMatch("sift",device)
+    matcher = FlannMatch()
     tiler = NoLap()
     selector = ClusterSelector()
+    pre_proces = MultiProcess()
     pnp = PnP.vpair_init()
-    pnp_ransac = PnP.vpair_init(True, 1000, 2.0)
+    pnp_ransac = PnP.vpair_init(True, 1000, 5.0)
     data_set = load_csv_to_arr(data_path+"GNSS_data_test.csv")
     sat_img = cv2.imread(data_path+"SatData/vpair final 2.jpg")
+    sat_processed = pre_proces.process(sat_img)
     sat_res = (sat_img.shape[0],sat_img.shape[1])
     sat_features = tiler.tile(sat_img,sat_res,extractor)
     bounds = load_bonuds(data_path+"SatData/boundaries.txt")
@@ -39,6 +42,7 @@ def main(data_path,max_keypoints):
     pred_geo = []
     for i in data_set:
         img = cv2.imread(data_path+i[0]+".png")
+        img = pre_proces.process(img)
         img, _ = rotate_image(img, -i[6]/math.pi*180)
         target.append([i[0],i[1],i[2]])
 
@@ -61,7 +65,7 @@ def main(data_path,max_keypoints):
         for huhuhuh in range(3):
             latlong = np.asarray(xy_to_coords(bounds, sat_res, points[:,:2]), dtype=np.float32)
             cam = pnp_ransac.pnp([latlong],[img_keypoints])[0]
-            if cam[0][0] < bounds[0] and cam[0][0] > bounds[1] and cam[1][0] < bounds[2] and cam[1][0] > bounds[3]:
+            if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
                 pred_ransac.append([int(i[0]),cam[1][0],cam[0][0]])
                 break
 
@@ -82,7 +86,7 @@ def main(data_path,max_keypoints):
             latlong = np.asarray(xy_to_coords(bounds, sat_res, sat_cords), dtype=np.float32)
             cam = pnp.pnp([latlong],[img_cords])[0]
 
-            if cam[0][0] < bounds[0] and cam[0][0] > bounds[1] and cam[1][0] < bounds[2] and cam[1][0] > bounds[3]:
+            if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
                 pred_usac.append([int(i[0]),cam[1][0],cam[0][0]])
                 break
 
