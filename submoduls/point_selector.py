@@ -9,8 +9,8 @@ class ClusterSelector:
     def select(self, matcher, img_features, img, sat_features , sat_img):
         all_keypoints = np.empty((0,3))
         for j in sat_features:
-            img_matches = matcher.match(j[0],j[1],img_features[0],img_features[1])
-            sat_keypoints = np.asarray([[j[0][int(t)][0], j[0][int(t)][1], int(img_matches[1][index])] for index, t in enumerate(img_matches[0])])
+            img_matches = matcher.match(j,img_features)
+            sat_keypoints = np.asarray([[j.get_points()[int(t)][0], j.get_points()[int(t)][1], int(img_matches[1][index])] for index, t in enumerate(img_matches[0])])
             if len(sat_keypoints) != 0:
                 all_keypoints = np.concatenate((all_keypoints, sat_keypoints), axis=0)
         db = DBSCAN(eps=50, min_samples = 5).fit(all_keypoints[:,:2])
@@ -52,6 +52,10 @@ class ClusterSelector:
             plt.imshow(sat_img, zorder=0)
             plt.show()
 
+        if len(counts) == 0:
+            print("no cluster")
+            return all_keypoints
+
 
         largest_cluster_label = unique_labels[np.argmax(counts)]  # Label of the largest cluster
         largest_cluster_points = all_keypoints[labels == largest_cluster_label]  # Points in the largest cluster
@@ -66,8 +70,8 @@ class TileSelector:
         tile_keypoints = []
         counts = []
         for j in sat_features:
-            img_matches = matcher.match(j[0],j[1],img_features[0],img_features[1])
-            sat_keypoints = np.asarray([[j[0][int(t)][0], j[0][int(t)][1], int(img_matches[1][index])] for index, t in enumerate(img_matches[0])])
+            img_matches = matcher.match(j,img_features)
+            sat_keypoints = np.asarray([[j.get_points()[int(t)][0], j.get_points()[int(t)][1], int(img_matches[1][index])] for index, t in enumerate(img_matches[0])])
             tile_keypoints.append(sat_keypoints)
             counts.append(len(sat_keypoints))
 

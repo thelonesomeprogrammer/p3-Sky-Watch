@@ -22,20 +22,19 @@ class MOverLap:
                     j_lower = int(j * fracj - fracj / 3)
 
                 tile = sat_img[i_lower:(i+1)*fraci, j_lower:(j+1)*fracj]
-                kp, des = extractor.extract(tile)
+                features = extractor.extract(tile)
 
 
                 if self.plot:
                     fig, axs = plt.subplots(2)
                     axs[0].imshow(sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj], zorder=0)
-                    axs[0].scatter(kp.cpu()[:,0], kp.cpu()[:,1], zorder=1)
+                    axs[0].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
                 
-                kp[:, 1] += i*fraci
-                kp[:, 0] += j*fracj
+                features.mv_points(i*fraci, j*fracj)
 
                 if self.plot:
                     axs[1].imshow(sat_img, zorder=0)
-                    axs[1].scatter(kp.cpu()[:,0], kp.cpu()[:,1], zorder=1)
+                    axs[1].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
                     plt.show()
 
                 sat_features.append([kp, des])
@@ -52,23 +51,22 @@ class NoLap:
         for i in range(6):
             for j in range(9):
                 tile = sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj]
-                kp, des = extractor.extract(tile)
+                features = extractor.extract(tile)
 
 
                 if self.plot:
                     fig, axs = plt.subplots(2)
                     axs[0].imshow(sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj], zorder=0)
-                    axs[0].scatter(kp.cpu()[:,0], kp.cpu()[:,1], zorder=1)
+                    axs[0].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
                 
-                kp[:, 1] += i*fraci
-                kp[:, 0] += j*fracj
+                features.mv_points(i*fraci, j*fracj)
 
                 if self.plot:
                     axs[1].imshow(sat_img, zorder=0)
-                    axs[1].scatter(kp.cpu()[:,0], kp.cpu()[:,1], zorder=1)
+                    axs[1].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
                     plt.show()
 
-                sat_features.append([kp, des])
+                sat_features.append(features)
         return sat_features
 
 class AlaaLap:
@@ -81,23 +79,22 @@ class AlaaLap:
         sat_features = []
         tiles = self.split_image_into_tile(sat_img, self.tile_size, self.overlap)
         for tile in tiles:
-            kp, des = extractor.extract(tile.tile)
+            features = extractor.extract(tile.tile)
 
 
             if self.plot:
                 fig, axs = plt.subplots(2)
-                axs[0].imshow(tile.tile, zorder=0)
-                axs[0].scatter(kp.cpu()[:,0], kp.cpu()[:,1], zorder=1)
+                axs[0].imshow(sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj], zorder=0)
+                axs[0].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
             
-            kp[:, 1] += tile.x
-            kp[:, 0] += tile.y
+            features.mv_points(i*fraci, j*fracj)
 
             if self.plot:
                 axs[1].imshow(sat_img, zorder=0)
-                axs[1].scatter(kp.cpu()[:,0], kp.cpu()[:,1], zorder=1)
+                axs[1].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
                 plt.show()
 
-            sat_features.append([kp, des])
+            sat_features.append(features)
         return sat_features
 
 
