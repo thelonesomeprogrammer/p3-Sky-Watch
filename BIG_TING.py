@@ -1,11 +1,10 @@
 import cv2
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from collections import defaultdict
 from sklearn.cluster import DBSCAN
 import matplotlib.cm as cm
-
+import time # For measuring time taken for processing
 # Constants (adjust these according to your camera specifications)
 TILE_SIZE = 1500                   # Size of each tile in pixels (adjust based on your needs)
 TILE_OVERLAP = 300                 # Overlap between tiles in pixels (optional)
@@ -28,40 +27,10 @@ def divide_into_tiles(image, tile_size, overlap):
             tiles.append((tile, (x, y)))
     return tiles
 
-def rotate_image(mat, angle):
-    """
-    Rotates an image (angle in degrees) and expands image to avoid cropping
-    """
-    height, width = mat.shape[:2]
-    image_center = (width/2, height/2)
-
-    rotation_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-
-    abs_cos = abs(rotation_mat[0,0])
-    abs_sin = abs(rotation_mat[0,1])
-
-    # find the new width and height bounds
-    bound_w = int(height * abs_sin + width * abs_cos)
-    bound_h = int(height * abs_cos + width * abs_sin)
-
-    # adjust the rotation matrix to consider the translation
-    rotation_mat[0, 2] += bound_w/2 - image_center[0]
-    rotation_mat[1, 2] += bound_h/2 - image_center[1]
-
-    # rotate the image with the new bounds and translated rotation matrix
-    rotated_mat = cv2.warpAffine(mat, rotation_mat, (bound_w, bound_h), flags=cv2.INTER_LINEAR)
-    return rotated_mat
-
 def process_images(img1, drone_images_path_list, flight_data_csv):
+    start_time = time.time()
     # Load satellite image
     sat_image_original = img1
-
-    # Read flight data
-    try:
-        flight_data = pd.read_csv(flight_data_csv)
-    except Exception as e:
-        print(f"Error reading flight data CSV: {e}")
-        return
 
     # Divide the satellite image into tiles
     sat_tiles = divide_into_tiles(sat_image_original, TILE_SIZE, TILE_OVERLAP)
@@ -76,7 +45,12 @@ def process_images(img1, drone_images_path_list, flight_data_csv):
         kp_sat, des_sat = sift.detectAndCompute(tile, None)
         sat_tiles_features.append((tile, kp_sat, des_sat, (x, y)))
 
-    bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
+    FLANN_INDEX_KDTREE = 5
+    index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=1 )
+    search_params = dict(checks=50 )
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+    # bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
     all_satellite_match_points = []
     match_scores = []
 
@@ -89,21 +63,8 @@ def process_images(img1, drone_images_path_list, flight_data_csv):
         drone = cv2.GaussianBlur(drone, (3,3), 0)
         drone = apply_clahe(drone)
 
-        # Extract filename to match with poses.csv
-        drone_filename = drone_image_path.split("\\")[-1]
-
-        # Get yaw angle from flight data
-        yaw_row = flight_data[flight_data['filename'] == drone_filename]
-        if yaw_row.empty:
-            print(f"No yaw data found for {drone_filename}")
-            continue
-        yaw_angle = yaw_row.iloc[0]['yaw']
-
-        # Rotate drone image based on yaw angle
-        rotated_drone = rotate_image(drone, -yaw_angle)  # Negative angle to rotate clockwise
-
-        # Detect and compute features in rotated drone image
-        kp_drone, des_drone = sift.detectAndCompute(rotated_drone, None)
+        # Detect and compute features in drone image
+        kp_drone, des_drone = sift.detectAndCompute(drone, None)
 
         # List to keep track of matches for each tile
         top_matches = []  # Each element: (score, tile_idx, H, good_matches_filtered, kp_sat, (x, y))
@@ -112,9 +73,11 @@ def process_images(img1, drone_images_path_list, flight_data_csv):
         # Iterate over all satellite tiles
         for tile_idx, (tile, kp_sat, des_sat, (x, y)) in enumerate(sat_tiles_features):
             if des_sat is None or len(kp_sat) < 4:
+                # Not enough features in this tile
                 continue
 
-            matches = bf.knnMatch(des_drone, des_sat, k=2)
+            # matches = bf.knnMatch(des_drone, des_sat, k=2)
+            matches=flann.knnMatch(des_drone,des_sat,k=2)
             # Apply Lowe's ratio test
             good_matches = []
             for m, n in matches:
@@ -179,7 +142,7 @@ def process_images(img1, drone_images_path_list, flight_data_csv):
                 tile = sat_tiles[tile_idx][0]
 
                 # Draw matches
-                match_img = cv2.drawMatches(rotated_drone, kp_drone,
+                match_img = cv2.drawMatches(drone, kp_drone,
                                             tile, kp_sat,
                                             good_matches_filtered, None,
                                             matchColor=(0, 255, 0),
@@ -188,7 +151,8 @@ def process_images(img1, drone_images_path_list, flight_data_csv):
 
                 # Display matches (optional)
                 print(f"Tile ({x}, {y}) - Number of matches: {score}")
-
+                end_time = time.time()
+                print(f"Time taken: {end_time - start_time:.2f} seconds")
                 plt.figure(figsize=(15, 10))
                 plt.imshow(match_img, cmap='gray')
                 plt.title(f"Drone Image: {drone_image_path} <--> Satellite Tile: ({x}, {y}) | Matches: {score}")
@@ -236,6 +200,10 @@ def process_images(img1, drone_images_path_list, flight_data_csv):
         for label, color in zip(clusters.keys(), colors):
             cluster_points = np.array([item['point'] for item in clusters[label]])
             plt.scatter(cluster_points[:, 0], cluster_points[:, 1], color=color, s=10, label=f'Cluster {label}')
+# Annotate cluster center with confidence
+            center = cluster_confidence[label]['center']
+            confidence = cluster_confidence[label]['average_score']
+            plt.text(center[0], center[1], f'{confidence:.2f}', color='white', fontsize=12, ha='center', va='center')
 
         plt.legend()
         plt.title('Clusters of Matched Points on Satellite Image')
@@ -247,12 +215,12 @@ def process_images(img1, drone_images_path_list, flight_data_csv):
 if __name__ == "__main__":
     satellite_image_path = "SIFTOGB.jpg"  # Replace with your satellite image path
     drone_images_path_list = [
-        # "vpair\\00359.png",
+        "vpair\\00359.png",
         # "vpair\\00367.png",
         # "vpair\\00368.png",
         # "vpair\\00369.png",
-        "vpair\\00370.png",
-        "vpair\\00371.png",
+        # "vpair\\00370.png",
+        # "vpair\\00371.png",
     ]
     flight_data_csv = "poses.csv"  # Replace with your flight data CSV path
 
