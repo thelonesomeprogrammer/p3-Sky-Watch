@@ -38,14 +38,14 @@ def cal_dist(Pred, Target): ## calculate distance between our guess and ground t
 # Pred: [[id, x, y]]
 def validation(pred, targets):
     pred_list = np.array(sorted(np.asarray(pred), key=lambda x: x[0])) ## sort the predictions to reduce time to find matching target
-    startsearch = 0 ## start point for our search for matching target
+    startsearch = targets[0][0] ## start point for our search for matching target
     last_hit = 0 ## last time we had a hit
     hit_deltas = [] ## distance between hits  
     for v in pred_list: 
         for i in range(startsearch, len(targets)): ## loop over the remaining targets that might match our data 
             if targets[i][0] == v[0]: ## check if this target is the target the fits the current prediction 
                 hit_deltas.append(i - last_hit) ## how long since last hit 
-                last_hit = startsearch
+                last_hit = i
                 break
             else:
                 startsearch += 1
