@@ -12,7 +12,7 @@ def load_csv_to_arr(file): ## load the csv data (might be replaced with global i
         for k, row in enumerate(csv_reader):
             if k != 0:
                 data = list(map(float, row[1:]))
-                data.insert(0, int(row[0].replace(".png","")))
+                data.insert(0, row[0].replace(".png",""))
                 anno.append(data)
         return anno
 
@@ -21,8 +21,9 @@ def load_csv_to_arr(file): ## load the csv data (might be replaced with global i
 def cal_dist(Pred, Target): ## calculate distance between our guess and ground truth  
     dist_list=[]
     for i,v in enumerate(Pred):
-        if v[1:3] == [0,0]:
+        if v[1] == 0 and v[2] == 0:
             dist_list.append(-1)
+            continue
         lat1 = math.radians(v[1]) ## convert from degrees to radians 
         lon1 = math.radians(v[2]) ## convert from degrees to radians
         lat2 = math.radians(Target[i][1]) ## convert from degrees to radians
@@ -40,37 +41,23 @@ def cal_dist(Pred, Target): ## calculate distance between our guess and ground t
 # Pred: [[id, x, y]]
 def validation(pred, targets):
     pred_list = np.array(sorted(np.asarray(pred), key=lambda x: x[0])) ## sort the predictions to reduce time to find matching target
-    startsearch = targets[0][0] ## start point for our search for matching target
-    last_hit = 0 ## last time we had a hit
-    hit_deltas = [] ## distance between hits  
-    for v in pred_list: 
-        for i in range(startsearch, len(targets)): ## loop over the remaining targets that might match our data 
-            if targets[i][0] == v[0]: ## check if this target is the target the fits the current prediction 
-                hit_deltas.append(i - last_hit) ## how long since last hit 
-                last_hit = i
-                break
-            else:
-                startsearch += 1
-
     dlist = np.asanyarray(cal_dist(pred_list, targets))
-    dist_list =  [g for g in dlist if g != -1]## calculate the distance between prediction and target
+    dist_list =  np.asarray([g for g in dlist if g != -1]) ## calculate the distance between prediction and target
     successlist = np.where(dist_list <= 50)[0] ## take the data that is within our 50m delta goal
-    successrate = len(successlist) / (len(dist_list)+0.000001) * 100 ## calculate success rate (how often do we hit within the 50m goal)
+    successrate = len(successlist) / (len(dist_list) + 0.000001) * 100 ## calculate success rate (how often do we hit within the 50m goal)
     meanerror = dist_list.mean() ## calculate mean error
-    avg_hit = np.asarray(hit_deltas).mean() ## calculate mean hit frequency (mean distance in target images between hits) 
-    print("dist_list: "+str(dlist)) ## print stats
-    print("freq: "+str(avg_hit)) ## print stats
-    print("success rate: "+str(successrate)) ## print stats
-    print("median: "+str(np.median(dist_list)))
-    print("mean error: "+str(meanerror)) ## print stats
+    print("dist_list: " + str(dlist)) ## print stats
+    print("success rate: " + str(successrate)) ## print stats
+    print("median: " + str(np.median(dist_list)))
+    print("mean error: " + str(meanerror)) ## print stats
 
 
 
 
 if __name__ == "__main__":
     data = load_csv_to_arr('../datasets/SkyWatchData/GNSS_data.csv')
-    fake_Pred = [data[2][0],data[1][1],data[1][2]]
-    validation(fake_Pred,data)
+    fake_Pred = [data[2][0], data[1][1], data[1][2]]
+    validation(fake_Pred, data)
 
 #hvor mange procent af vores predictions/bereninger er under 50m (succesrate)
 #hvor ofte gætter vi (avg_hit)
