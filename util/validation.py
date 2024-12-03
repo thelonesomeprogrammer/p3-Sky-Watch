@@ -12,7 +12,7 @@ def load_csv_to_arr(file): ## load the csv data (might be replaced with global i
         for k, row in enumerate(csv_reader):
             if k != 0:
                 data = list(map(float, row[1:]))
-                data.insert(0, row[0].replace(".png",""))
+                data.insert(0, int(row[0].replace(".png","")))
                 anno.append(data)
         return anno
 

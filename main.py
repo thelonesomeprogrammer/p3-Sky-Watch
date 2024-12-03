@@ -83,7 +83,7 @@ def main(data_path,max_keypoints):
         if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
             pred_geo.append([int(i[0]),cam[1][0],cam[0][0]])
         else:
-            pred_geo.append([int(i[0]),0,0)
+            pred_geo.append([int(i[0]),0,0])
         print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
 
 
