@@ -129,12 +129,17 @@ def main(data_path,max_keypoints):
 
 
     
+    print("\n\n--------------------------------------------------------------------------------\n\n")
+    print("Marrinus filter:\n")
     validation(pred_geo,target)
     print("\n\n--------------------------------------------------------------------------------\n\n")
+    print("no filter:\n")
     validation(pred_ransac,target)
     print("\n\n--------------------------------------------------------------------------------\n\n")
+    print("Macsac filter:\n")
     validation(pred_usac,target)
     print("\n\n--------------------------------------------------------------------------------\n\n")
+    print("Macsac filter:\n")
     print("match: "+str(match_times))
     print("extract: "+str(extract_times))
     print("mfilter : "+str(mfilter_times))
