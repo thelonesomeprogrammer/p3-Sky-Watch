@@ -24,8 +24,8 @@ def main(data_path,max_keypoints):
     print(device)
     extractor = SuperExtract(max_keypoints,device)
     matcher = LightMatch("superpoint",device)
-    tiler = NoLap()
-    selector = ClusterSelector()
+    tiler = MOverLap()
+    selector = TileSelector()
     pnp = PnP.vpair_init()
     pnp_ransac = PnP.vpair_init(True, 1000, 2.0)
     data_set = load_csv_to_arr(data_path+"GNSS_data_test.csv")
@@ -56,14 +56,15 @@ def main(data_path,max_keypoints):
         latlong = np.asarray(xy_to_coords(bounds, sat_res, geo_sat_cords), dtype=np.float32)
         cam = pnp.pnp([latlong],[geo_img_cords])[0]
 
-        pred_geo.append([int(i[0]),cam[1][0],cam[0][0]])
+        if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
+            pred_geo.append([int(i[0]),cam[1][0],cam[0][0]])
         print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
 
 
         for huhuhuh in range(3):
             latlong = np.asarray(xy_to_coords(bounds, sat_res, points[:,:2]), dtype=np.float32)
-            cam = pnp_ransac.pnp([latlong],[img_keypoints])[0]
-            if cam[0][0] < bounds[0] and cam[0][0] > bounds[1] and cam[1][0] < bounds[2] and cam[1][0] > bounds[3]:
+            cam = pnp.pnp([latlong],[img_keypoints])[0]
+            if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
                 pred_ransac.append([int(i[0]),cam[1][0],cam[0][0]])
                 break
 
@@ -80,7 +81,8 @@ def main(data_path,max_keypoints):
             latlong = np.asarray(xy_to_coords(bounds, sat_res, sat_cords), dtype=np.float32)
             cam = pnp.pnp([latlong],[img_cords])[0]
 
-            if cam[0][0] < bounds[0] and cam[0][0] > bounds[1] and cam[1][0] < bounds[2] and cam[1][0] > bounds[3]:
+            
+            if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
                 pred_usac.append([int(i[0]),cam[1][0],cam[0][0]])
                 break
 

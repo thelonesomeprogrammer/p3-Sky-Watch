@@ -67,14 +67,17 @@ class TileSelector:
         counts = []
         for j in sat_features:
             img_matches = matcher.match(j[0],j[1],img_features[0],img_features[1])
-            sat_keypoints = np.asarray([[j[0][int(t)][0], j[0][int(t)][1], int(img_matches[1][index])] for index, t in enumerate(img_matches[0])])
+            sat_keypoints = [[j[0][int(t)][0], j[0][int(t)][1], int(img_matches[1][index])] for index, t in enumerate(img_matches[0])]
             tile_keypoints.append(sat_keypoints)
             counts.append(len(sat_keypoints))
 
 
-            # Sort clusters by size (largest to smallest)
-            sorted_indices = np.argsort(-counts)  # Negative for descending order
-            sorted_tiles = np.asarray(tile_keypoints[sorted_indices])
+        # Sort clusters by size (largest to smallest)
+        sorted_indices = np.argsort(-np.asarray(counts, dtype=np.int64))  # Negative for descending order  
+        sorted_indices = np.asarray(sorted_indices, dtype=np.int64)
+        sorted_tiles = []
+        for i in sorted_indices:
+            sorted_tiles.append(np.asarray(tile_keypoints[i]))
 
         if self.plot:
 

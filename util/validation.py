@@ -44,7 +44,7 @@ def validation(pred, targets):
     for v in pred_list: 
         for i in range(startsearch, len(targets)): ## loop over the remaining targets that might match our data 
             if targets[i][0] == v[0]: ## check if this target is the target the fits the current prediction 
-                hit_deltas.append(startsearch - last_hit) ## how long since last hit 
+                hit_deltas.append(i - last_hit) ## how long since last hit 
                 last_hit = startsearch
                 break
             else:
@@ -54,10 +54,11 @@ def validation(pred, targets):
     successlist = np.where(dist_list <= 50)[0] ## take the data that is within our 50m delta goal
     successrate = len(successlist) / (len(dist_list)+0.000001) * 100 ## calculate success rate (how often do we hit within the 50m goal)
     meanerror = dist_list.mean() ## calculate mean error
-    avg_hit = np.asanyarray(hit_deltas).mean() ## calculate mean hit frequency (mean distance in target images between hits) 
+    avg_hit = np.asarray(hit_deltas).mean() ## calculate mean hit frequency (mean distance in target images between hits) 
     print("dist_list: "+str(dist_list)) ## print stats
     print("freq: "+str(avg_hit)) ## print stats
     print("success rate: "+str(successrate)) ## print stats
+    print("median: "+str(np.median(dist_list)))
     print("mean error: "+str(meanerror)) ## print stats
 
 
