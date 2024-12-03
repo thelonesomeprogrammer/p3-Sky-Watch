@@ -1,5 +1,5 @@
 import cv2
-# img = cv2.imread('01975.jpg')
+#img = cv2.imread('tysk.jpg')
 
 def rotate_image(mat, angle):
     """
@@ -30,6 +30,6 @@ def rotate_image(mat, angle):
 
 # ModifiedVersionRotation, T = rotate_image(img, -36)
 # modi=cv2.resize(ModifiedVersionRotation,(ModifiedVersionRotation.shape[1]//6,ModifiedVersionRotation.shape[0]//6))
-# cv2.imshow('ModifiedVersionRotation', modi)
-#
-# cv2.waitKey(0)
+# cv2.imshow('ModifiedVersionRotation', ModifiedVersionRotation)
+
+#cv2.waitKey(0)
