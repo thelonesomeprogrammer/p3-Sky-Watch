@@ -24,8 +24,8 @@ from submoduls.preproces import MultiProcess, NoProcess
 def main(data_path,max_keypoints):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
-    extractor = SiftExtract(max_keypoints)
-    matcher = BFMatch()
+    extractor = SuperExtract(max_keypoints, device)
+    matcher = FlannMatch()
     tiler = NoLap()
     selector = ClusterSelector()
     pre_proces = NoProcess()
@@ -66,7 +66,7 @@ def main(data_path,max_keypoints):
     
         
         tic4 = time.perf_counter()
-        geo_img_cords, geo_sat_cords = geofilter(img_keypoints, points[:,:2], 5, 4) ## 5 3 
+        geo_img_cords, geo_sat_cords = geofilter(img_keypoints, points[:,:2], 5, 3) ## 5 3 
         tic5 = time.perf_counter()
         mfilter_times.append(tic5-tic4)
 

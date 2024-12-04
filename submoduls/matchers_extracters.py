@@ -42,7 +42,7 @@ class FlannMatch:
         self.flann = cv2.FlannBasedMatcher(index_params, search_params)
 
     def match(self, features0, features1, k = 2):
-        matches = self.flann.knnMatch(features0.descriptors, features1.descriptors, k = k)
+        matches = self.flann.knnMatch(features0.to_np(), features1.to_np(), k = k)
 
         matched_kp1 = [m[0].trainIdx for m in matches]
         matched_kp0 = [m[0].queryIdx for m in matches]
@@ -84,8 +84,7 @@ class FeaturesHolder:
 
     def to_Light(self,device):
         if self.is_tensor:
-            if len(self.scales) == 0 and len(self.scales):
-                return {"keypoints": self.points.unsqueeze(0).to(device), "descriptors": self.descriptors.unsqueeze(0).to(device)}
+            return {"keypoints": self.points.unsqueeze(0).to(device), "descriptors": self.descriptors.unsqueeze(0).to(device)}
         else:
             return {
                     "keypoints": torch.from_numpy(self.points).unsqueeze(0).to(device),
@@ -94,6 +93,12 @@ class FeaturesHolder:
                     "oris": torch.from_numpy(self.angles).unsqueeze(0).to(device),
                     "descriptors": torch.from_numpy(self.descriptors).unsqueeze(0).to(device),
             }
+    
+    def to_np(self):
+        if self.is_tensor:
+            return self.descriptors.numpy()
+        else:
+            return self.descriptors
 
     def get_points(self):
         if self.is_tensor:
