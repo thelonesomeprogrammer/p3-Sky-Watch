@@ -24,8 +24,8 @@ from submoduls.preproces import MultiProcess
 def main(data_path,max_keypoints):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
-    extractor = SiftExtract(max_keypoints)
-    matcher = FlannMatch()
+    extractor = SuperExtract(max_keypoints,device)
+    matcher = LightMatch("superpoint",device)
     tiler = NoLap()
     selector = ClusterSelector()
     pre_proces = MultiProcess()
