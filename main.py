@@ -66,7 +66,7 @@ def main(data_path,max_keypoints):
     
         
         tic4 = time.perf_counter()
-        geo_img_cords, geo_sat_cords = geofilter(img_keypoints, points[:,:2], 5, 4) ## 5 3 
+        geo_img_cords, geo_sat_cords = geofilter(img_keypoints, points[:,:2], 5, 3) ## 5 3 
         tic5 = time.perf_counter()
         mfilter_times.append(tic5-tic4)
 
