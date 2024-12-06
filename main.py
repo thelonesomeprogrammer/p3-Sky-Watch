@@ -74,16 +74,13 @@ def main(data_path,max_keypoints):
             latlong = np.asarray(xy_to_coords(bounds, sat_res, geo_sat_cords), dtype=np.float32)
 
             cam = pnp.pnp([latlong],[geo_img_cords])[0]
+            if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
+                pred_geo.append([int(i[0]),cam[1][0],cam[0][0]])
+            else:
+                pred_geo.append([int(i[0]),0,0])
         else:
             pred_usac.append([int(i[0]),0,0])
 
-        latlong = np.asarray(xy_to_coords(bounds, sat_res, geo_sat_cords), dtype=np.float32)
-        cam = pnp.pnp([latlong],[geo_img_cords])[0]
-
-        if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
-            pred_geo.append([int(i[0]),cam[1][0],cam[0][0]])
-        else:
-            pred_geo.append([int(i[0]),0,0])
         print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
 
 
@@ -128,6 +125,8 @@ def main(data_path,max_keypoints):
                     break
                 elif huhuhuh == 2:
                     pred_usac.append([int(i[0]),0,0])
+            else:
+                pred_usac.append([int(i[0]),0,0])
 
 
 
