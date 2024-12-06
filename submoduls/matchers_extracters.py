@@ -84,8 +84,7 @@ class FeaturesHolder:
 
     def to_Light(self,device):
         if self.is_tensor:
-            if len(self.scales) == 0 and len(self.scales):
-                return {"keypoints": self.points.unsqueeze(0).to(device), "descriptors": self.descriptors.unsqueeze(0).to(device)}
+            return {"keypoints": self.points.unsqueeze(0).to(device), "descriptors": self.descriptors.unsqueeze(0).to(device)}
         else:
             return {
                     "keypoints": torch.from_numpy(self.points).unsqueeze(0).to(device),
