@@ -24,15 +24,14 @@ from submoduls.preproces import MultiProcess, NoProcess
 def main(data_path,max_keypoints):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
-    extractor = SuperExtract(max_keypoints, device)
-    matcher = FlannMatch()
+    extractor = SiftExtract(max_keypoints)
+    matcher = BFMatch()
     tiler = NoLap()
     selector = ClusterSelector()
-    pre_proces = NoProcess()
+    pre_proces = MultiProcess()
     pnp = PnP.vpair_init()
-    pnp_ransac = PnP.vpair_init(True, 1000, 5.0)
     data_set = load_csv_to_arr(data_path+"GNSS_data_test.csv")
-    sat_img = cv2.imread(data_path+"SatData/vpair final 2.jpg")
+    sat_img = cv2.imread(data_path+"SatData/vpair_final_2.jpg")
     sat_processed = pre_proces.process(sat_img)
     sat_res = (sat_img.shape[0],sat_img.shape[1])
     sat_features = tiler.tile(sat_img, sat_res, extractor)
@@ -76,9 +75,7 @@ def main(data_path,max_keypoints):
             cam = pnp.pnp([latlong],[geo_img_cords])[0]
         else:
             pred_usac.append([int(i[0]),0,0])
-
-        latlong = np.asarray(xy_to_coords(bounds, sat_res, geo_sat_cords), dtype=np.float32)
-        cam = pnp.pnp([latlong],[geo_img_cords])[0]
+        
 
         if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
             pred_geo.append([int(i[0]),cam[1][0],cam[0][0]])
@@ -88,8 +85,15 @@ def main(data_path,max_keypoints):
 
 
         for huhuhuh in range(3):
+            if len(points) < 4:
+                if huhuhuh == 2:
+                    pred_usac.append([int(i[0]),0,0])
+                    break
+                continue
             latlong = np.asarray(xy_to_coords(bounds, sat_res, points[:,:2]), dtype=np.float32)
+    
             cam = pnp.pnp([latlong],[img_keypoints])[0]
+
             if cam[1][0] < bounds[0] and cam[1][0] > bounds[1] and cam[0][0] < bounds[2] and cam[0][0] > bounds[3]:
                 pred_ransac.append([int(i[0]),cam[1][0],cam[0][0]])
                 break

@@ -30,7 +30,7 @@ class BFMatch:
         self.bf = cv2.BFMatcher(crossCheck=False)
 
     def match(self, features0, features1, k = 2):
-            matches = self.bf.knnMatch(features0.descriptors, features1.descriptors, k = k)
+            matches = self.bf.knnMatch(features0.to_np(), features1.to_np(), k = k)
 
 
             matched_kp1 = [m[0].trainIdx for m in matches]
