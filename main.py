@@ -115,7 +115,7 @@ def main(data_path,max_keypoints):
 
                 
             tic6 = time.perf_counter()
-            F, mask = cv2.findHomography(img_keypoints, points[:,:2], method=cv2.USAC_MAGSAC, ransacReprojThreshold=2.0, confidence = 0.99, maxIters=4000)
+            F, mask = cv2.findHomography(img_keypoints, points[:,:2], method=cv2.RANSAC, ransacReprojThreshold=5.0, confidence = 0.99, maxIters=4000)
             tic7 = time.perf_counter()
             megsag_times.append(tic7-tic6)
 
