@@ -22,7 +22,7 @@ def cal_dist(Pred, Target): ## calculate distance between our guess and ground t
     dist_list=[]
     for i,v in enumerate(Pred):
         if v[1] == 0 and v[2] == 0:
-            dist_list.append(-1)
+            dist_list.append((v[0],-1))
             continue
         lat1 = math.radians(v[1]) ## convert from degrees to radians 
         lon1 = math.radians(v[2]) ## convert from degrees to radians
@@ -34,24 +34,27 @@ def cal_dist(Pred, Target): ## calculate distance between our guess and ground t
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)) ## Haversine formula
 
         Dist = 6371000 * c ## scale distance to earth size 
-        dist_list.append(Dist)
+        dist_list.append((v[0],Dist))
     return dist_list
 
             
 # Pred: [[id, x, y]]
-def validation(pred, targets):
+def validation(pred, targets,file):
     pred_list = np.array(sorted(np.asarray(pred), key=lambda x: x[0])) ## sort the predictions to reduce time to find matching target
     dlist = np.asanyarray(cal_dist(pred_list, targets))
-    dist_list =  np.asarray([g for g in dlist if g != -1]) ## calculate the distance between prediction and target
+    dist_list =  np.asarray([g[1] for g in dlist if g[1] != -1]) ## calculate the distance between prediction and target
     successlist = np.where(dist_list <= 50)[0] ## take the data that is within our 50m delta goal
     successrate = len(successlist) / (len(dist_list) + 0.000001) * 100 ## calculate success rate (how often do we hit within the 50m goal)
     meanerror = dist_list.mean() ## calculate mean error
+
     print("dist_list: " + str(dlist)) ## print stats
     print("success rate: " + str(successrate)) ## print stats
     print("median: " + str(np.median(dist_list)))
     print("mean error: " + str(meanerror)) ## print stats
 
-
+    with open(file, mode="w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerows(dlist)
 
 
 if __name__ == "__main__":

@@ -45,7 +45,7 @@ def main(data_path,max_keypoints):
     extract_times = []
     mfilter_times = []
     megsag_times = []
-    for i in data_set:
+    for i in data_set[0:3]:
         img = cv2.imread(data_path + i[0] + ".png")
         img = pre_proces.process(img)
         img, _ = rotate_image(img, -i[6]/math.pi*180)
@@ -144,13 +144,13 @@ def main(data_path,max_keypoints):
     
     print("\n\n--------------------------------------------------------------------------------\n\n")
     print("Marrinus filter:\n")
-    validation(pred_geo,target)
+    validation(pred_geo,target,"mfilter.csv")
     print("\n\n--------------------------------------------------------------------------------\n\n")
     print("no filter:\n")
-    validation(pred_ransac,target)
+    validation(pred_ransac,target,"nofilter.csv")
     print("\n\n--------------------------------------------------------------------------------\n\n")
     print("Macsac filter:\n")
-    validation(pred_usac,target)
+    validation(pred_usac,target,"RANfilter.csv")
     print("\n\n--------------------------------------------------------------------------------\n\n")
     print("Macsac filter:\n")
     print("match: "+str(match_times))
