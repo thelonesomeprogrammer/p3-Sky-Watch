@@ -46,10 +46,10 @@ class NoLap:
 
     def tile(self, sat_img, sat_res, extractor):
         sat_features = []
-        fraci = int(sat_res[0]/6)
-        fracj = int(sat_res[1]/9)
-        for i in range(6):
-            for j in range(9):
+        fraci = int(sat_res[0]/9)
+        fracj = int(sat_res[1]/6)
+        for i in range(9):
+            for j in range(6):
                 tile = sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj]
                 features = extractor.extract(tile)
 
