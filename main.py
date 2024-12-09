@@ -23,7 +23,7 @@ from submoduls.preproces import MultiProcess, NoProcess
 
 def main(data_path,max_keypoints):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    cv::theRNG().state = 7;
+    cv2.setRNGSeed(69)
     print(device)
     extractor = SiftExtract(max_keypoints)
     matcher = BFMatch()
