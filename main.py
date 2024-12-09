@@ -18,15 +18,23 @@ from submoduls.preproces import MultiProcess
 
 
 
-
+def numpy_image_to_torch(image: np.ndarray) -> torch.Tensor:
+    """Normalize the image tensor and reorder the dimensions."""
+    if image.ndim == 3:
+        image = image.transpose((2, 0, 1))  # HxWxC to CxHxWpython  
+    elif image.ndim == 2:
+        image = image[None]  # add channel axis
+    else:
+        raise ValueError(f"Not an image: {image.shape}")
+    return torch.tensor(image / 255.0, dtype=torch.float)
 
 def main(data_path,max_keypoints):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
     extractor = SiftExtract(max_keypoints)
-    matcher = FlannMatch()
+    matcher = LightMatch("sift",device)
     tiler = NoLap()
-    selector = ClusterSelector()
+    selector = ClusterSelector(True)
     pre_proces = MultiProcess()
     pnp = PnP.vpair_init()
     pnp_ransac = PnP.vpair_init(True, 1000, 5.0)
@@ -40,7 +48,7 @@ def main(data_path,max_keypoints):
     pred_usac = []
     pred_ransac = []
     pred_geo = []
-    for i in data_set:
+    for i in [data_set[4]]:
         img = cv2.imread(data_path+i[0]+".png")
         img = pre_proces.process(img)
         img, _ = rotate_image(img, -i[6]/math.pi*180)
@@ -48,7 +56,6 @@ def main(data_path,max_keypoints):
 
         features = extractor.extract(img)
         points = selector.select(matcher,features,img,sat_features,sat_img)
-
 
         img_keypoints = np.asarray([[int(features.get_points()[int(t)][0]),int(features.get_points()[int(t)][1])] for t in points[:,2]], dtype=np.float32)
 
