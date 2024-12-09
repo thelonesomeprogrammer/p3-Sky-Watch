@@ -18,15 +18,12 @@ from submoduls.point_selector import ClusterSelector, TileSelector
 from submoduls.preproces import MultiProcess, NoProcess
 
 
-
-
-
 def main(data_path,max_keypoints):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     cv2.setRNGSeed(69)
     print(device)
     extractor = SiftExtract(max_keypoints)
-    matcher = BFMatch()
+    matcher = FlannMatch()
     tiler = NoLap()
     selector = ClusterSelector()
     pre_proces = MultiProcess()
@@ -55,11 +52,6 @@ def main(data_path,max_keypoints):
         features = extractor.extract(img)
         tic2 = time.perf_counter()
         points = selector.select(matcher,features,img,sat_features,sat_img)
-        tic3 = time.perf_counter()
-
-        extract_times.append(tic2-tic1)
-        match_times.append(tic3-tic2)
-
 
 
         img_keypoints = np.asarray([[int(features.get_points()[int(t)][0]),int(features.get_points()[int(t)][1])] for t in points[:,2]], dtype=np.float32)
