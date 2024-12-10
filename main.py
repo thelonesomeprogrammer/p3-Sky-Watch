@@ -18,49 +18,33 @@ from submoduls.point_selector import ClusterSelector, TileSelector
 from submoduls.preproces import MultiProcess, NoProcess
 
 
-def main(data_path,max_keypoints):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
     cv2.setRNGSeed(69)
-    print(device)
-    extractor = SiftExtract(max_keypoints)
-    matcher = FlannMatch()
-    tiler = NoLap()
-    selector = ClusterSelector()
-    pre_proces = MultiProcess()
     pnp = PnP.vpair_init()
-    data_set = load_csv_to_arr(data_path+"GNSS_data_test.csv")
-    sat_img = cv2.imread(data_path+"SatData/vpair_final_2.jpg")
+    data_set = load_csv_to_arr(pathclass.ground())
+    sat_img = cv2.imread(pathclass.sat())
     sat_processed = pre_proces.process(sat_img)
     sat_res = (sat_img.shape[0],sat_img.shape[1])
-    sat_features = tiler.tile(sat_img, sat_res, extractor)
-    bounds = load_bonuds(data_path + "SatData/boundaries.txt")
+    sat_features = tiler.tile(sat_processed, sat_res, extractor)
+    bounds = load_bonuds(pathclass.bounds())
     target = []
     pred_usac = []
     pred_ransac = []
     pred_geo = []
-    match_times = []
-    extract_times = []
-    mfilter_times = []
-    megsag_times = []
-    for i in data_set[0:3]:
-        img = cv2.imread(data_path + i[0] + ".png")
+    for i in data_set:
+        img = cv2.imread(pathclass.parse(i[0]))
         img = pre_proces.process(img)
         img, _ = rotate_image(img, -i[6]/math.pi*180)
         target.append([i[0],i[1],i[2]])
 
-        tic1 = time.perf_counter()
         features = extractor.extract(img)
-        tic2 = time.perf_counter()
         points = selector.select(matcher,features,img,sat_features,sat_img)
 
 
         img_keypoints = np.asarray([[int(features.get_points()[int(t)][0]),int(features.get_points()[int(t)][1])] for t in points[:,2]], dtype=np.float32)
     
         
-        tic4 = time.perf_counter()
         geo_img_cords, geo_sat_cords = geofilter(img_keypoints, points[:,:2], 5, 3) ## 5 3 
-        tic5 = time.perf_counter()
-        mfilter_times.append(tic5-tic4)
 
         if len(geo_img_cords) > 4:
             latlong = np.asarray(xy_to_coords(bounds, sat_res, geo_sat_cords), dtype=np.float32)
@@ -73,14 +57,13 @@ def main(data_path,max_keypoints):
                 
             print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
         else:
-            pred_usac.append([int(i[0]),0,0])
-        
+            pred_geo.append([int(i[0]),0,0])
 
 
         for huhuhuh in range(3):
             if len(points) < 4:
                 if huhuhuh == 2:
-                    pred_usac.append([int(i[0]),0,0])
+                    pred_ransac.append([int(i[0]),0,0])
                     break
                 continue
             latlong = np.asarray(xy_to_coords(bounds, sat_res, points[:,:2]), dtype=np.float32)
@@ -92,6 +75,7 @@ def main(data_path,max_keypoints):
                 break
             elif huhuhuh == 2:
                 pred_ransac.append([int(i[0]),0,0])
+                break
 
 
         print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
@@ -107,10 +91,7 @@ def main(data_path,max_keypoints):
             
 
                 
-            tic6 = time.perf_counter()
             F, mask = cv2.findHomography(img_keypoints, points[:,:2], method=cv2.RANSAC, ransacReprojThreshold=5.0, confidence = 0.99, maxIters=4000)
-            tic7 = time.perf_counter()
-            megsag_times.append(tic7-tic6)
 
             # Filter points based on the mask
             sat_cords = points[:,:2][mask.ravel() == 1]
@@ -125,9 +106,10 @@ def main(data_path,max_keypoints):
                     break
                 elif huhuhuh == 2:
                     pred_usac.append([int(i[0]),0,0])
+                    break
             else:
                 pred_usac.append([int(i[0]),0,0])
-
+                break
 
 
         print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
@@ -136,20 +118,53 @@ def main(data_path,max_keypoints):
     
     print("\n\n--------------------------------------------------------------------------------\n\n")
     print("Marrinus filter:\n")
-    validation(pred_geo,target,"mfilter.csv")
+    validation(pred_geo,target,csv_pre+"mfilter.csv")
     print("\n\n--------------------------------------------------------------------------------\n\n")
     print("no filter:\n")
-    validation(pred_ransac,target,"nofilter.csv")
+    validation(pred_ransac,target,csv_pre+"nofilter.csv")
     print("\n\n--------------------------------------------------------------------------------\n\n")
     print("Macsac filter:\n")
-    validation(pred_usac,target,"RANfilter.csv")
+    validation(pred_usac,target,csv_pre+"RANfilter.csv")
     print("\n\n--------------------------------------------------------------------------------\n\n")
-    print("Macsac filter:\n")
-    print("match: "+str(match_times))
-    print("extract: "+str(extract_times))
-    print("mfilter : "+str(mfilter_times))
-    print("macsac : "+str(megsag_times))
 
 
-main("./datasets/vpair/",2048)
+class ImgParser():
+    def __init__(self,data_path,prefix,postfix,sat):
+        self.prefix = prefix
+        self.postfix = postfix
+        self.satpost = sat
+        self.data_path = data_path
+    def parse(self,id):
+        return self.data_path + self.prefix + id + self.postfix
+    def sat(self):
+        return self.data_path + self.satpost
+    def bounds(self):
+        return self.data_path + "SatData/boundaries.txt"
+    def ground(self):
+        return self.data_path + "GNSS_data_test.csv"
+
+def main():
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(device)
+    tiler = NoLap()
+    selector = ClusterSelector()
+    vpair_parse = ImgParser("./datasets/vpair/","",".png","SatData/vpair final 2.jpg")
+    sky_parse = ImgParser("./datasets/SkyWatchData/","0",".jpg","SatData/StovringNorthOriented.jpg")
+
+    test(vpair_parse,MultiProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"vpair_mul_sift_bf_")
+    test(vpair_parse,NoProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"vpair_no_sift_bf_")
+    test(vpair_parse,MultiProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"vpair_mul_sift_light_")
+    test(vpair_parse,NoProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"vpair_no_sift_light_")
+    test(vpair_parse,NoProcess(),selector,tiler,LightMatch("superpoint",device),SuperExtract(2048,device),device,"vpair_no_super_light_")
+    test(vpair_parse,NoProcess(),selector,tiler,BFMatch(),SuperExtract(2048,device),device,"vpair_no_super_bf_")
+
+    test(sky_parse,MultiProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"sky_mul_sift_bf_")
+    test(sky_parse,NoProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"sky_no_sift_bf_")
+    test(sky_parse,MultiProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"sky_mul_sift_light_")
+    test(sky_parse,NoProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"sky_no_sift_light_")
+    test(sky_parse,NoProcess(),selector,tiler,LightMatch("superpoint",device),SuperExtract(2048,device),device,"sky_no_super_light_")
+    test(sky_parse,NoProcess(),selector,tiler,BFMatch(),SuperExtract(2048,device),device,"sky_no_super_bf_")
+
+
+main()
         

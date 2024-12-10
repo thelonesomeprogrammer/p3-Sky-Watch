@@ -53,9 +53,24 @@ class ClusterSelector:
             plt.show()
 
         if len(counts) == 0:
-            print("no cluster")
-            return all_keypoints
+            print("no cluster using fallback")
 
+            tile_keypoints = []
+            counts = []
+            for j in sat_features:
+                img_matches = matcher.match(j,img_features)
+                sat_keypoints = [[j.get_points()[int(t)][0], j.get_points()[int(t)][1], int(img_matches[1][index])] for index, t in enumerate(img_matches[0])]
+                tile_keypoints.append(sat_keypoints)
+                counts.append(len(sat_keypoints))
+
+
+            # Sort clusters by size (largest to smallest)
+            sorted_indices = np.argsort(-np.asarray(counts, dtype=np.int64))  # Negative for descending order  
+            sorted_indices = np.asarray(sorted_indices, dtype=np.int64)
+            sorted_tiles = []
+            for i in sorted_indices:
+                sorted_tiles.append(np.asarray(tile_keypoints[i]))
+            return sorted_tiles[0]
 
         largest_cluster_label = unique_labels[np.argmax(counts)]  # Label of the largest cluster
         largest_cluster_points = all_keypoints[labels == largest_cluster_label]  # Points in the largest cluster
@@ -70,8 +85,8 @@ class TileSelector:
         tile_keypoints = []
         counts = []
         for j in sat_features:
-            img_matches = matcher.match(j[0],j[1],img_features[0],img_features[1])
-            sat_keypoints = [[j[0][int(t)][0], j[0][int(t)][1], int(img_matches[1][index])] for index, t in enumerate(img_matches[0])]
+            img_matches = matcher.match(j,img_features)
+            sat_keypoints = [[j.get_points()[int(t)][0], j.get_points()[int(t)][1], int(img_matches[1][index])] for index, t in enumerate(img_matches[0])]
             tile_keypoints.append(sat_keypoints)
             counts.append(len(sat_keypoints))
 
