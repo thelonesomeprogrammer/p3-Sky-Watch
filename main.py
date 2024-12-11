@@ -35,7 +35,7 @@ def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
     pred_usac = []
     pred_ransac = []
     pred_geo = []
-    for i in data_set[:10]:
+    for i in data_set:
         img = cv2.imread(pathclass.parse(i[0]))
         img = pre_proces.process(img)
         img, _ = rotate_image(img, -i[6]/math.pi*180)
@@ -50,26 +50,8 @@ def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
         # Apply the geofilter
         geo_img_cords, geo_sat_cords = geofilter(img_keypoints, points[:, :2], 5, 3)
 
-        # Convert geofiltered points to keypoints
-        filtered_img_keypoints = [
-            cv2.KeyPoint(float(pt[0]), float(pt[1]), 1)
-            for pt in geo_img_cords
-        ]
 
-        filtered_sat_keypoints = [
-            cv2.KeyPoint(float(pt[0]), float(pt[1]), 1)
-            for pt in geo_sat_cords
-        ]
-
-        # Create matches for visualization
-        matches = [
-            cv2.DMatch(_queryIdx=i, _trainIdx=i, _distance=0)
-            for i in range(len(geo_img_cords))
-        ]
-
-        # Visualize filtered matches
-        visualizer.current_matches = matches
-        visualizer.visualize_matches(img, sat_img, filtered_img_keypoints, filtered_sat_keypoints, matches)
+        
 
 
         if len(geo_img_cords) > 4:
@@ -123,6 +105,26 @@ def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
             sat_cords = points[:,:2][mask.ravel() == 1]
             img_cords = img_keypoints[mask.ravel() == 1]
 
+            filtered_img_keypoints = [
+            cv2.KeyPoint(float(pt[0]), float(pt[1]), 1)
+            for pt in img_cords
+            ]
+
+            filtered_sat_keypoints = [
+                cv2.KeyPoint(float(pt[0]), float(pt[1]), 1)
+                for pt in sat_cords
+            ]
+
+            # Create matches for visualization
+            matches = [
+                cv2.DMatch(_queryIdx=i, _trainIdx=i, _distance=0)
+                for i in range(len(img_cords))
+            ]
+
+            # # Visualize filtered matches
+            # visualizer.current_matches = matches
+            # visualizer.visualize_matches(img, sat_img, filtered_img_keypoints, filtered_sat_keypoints, matches)
+
             latlong = np.asarray(xy_to_coords(bounds, sat_res, sat_cords), dtype=np.float32)
             if len(img_cords) > 4:
                 cam = pnp.pnp([latlong],[img_cords])[0]
@@ -173,7 +175,7 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
     tiler = NoLap()
-    selector = ClusterSelector()
+    selector = TileSelector()
     vpair_parse = ImgParser("./datasets/vpair/","",".png","SatData/vpair final 2.jpg")
     sky_parse = ImgParser("./datasets/SkyWatchData/","0",".jpg","SatData/StovringNorthOriented.jpg")
 
@@ -181,7 +183,7 @@ def main():
     # test(vpair_parse,NoProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"vpair_no_sift_bf_")
     # test(vpair_parse,MultiProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"vpair_mul_sift_light_")
     # test(vpair_parse,NoProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"vpair_no_sift_light_")
-    # test(vpair_parse,NoProcess(),selector,tiler,LightMatch("superpoint",device),SuperExtract(2048,device),device,"vpair_no_super_light_")
+    #test(vpair_parse,NoProcess(),selector,tiler,LightMatch("superpoint",device),SuperExtract(2048,device),device,"vpair_no_super_light_")
     # test(vpair_parse,NoProcess(),selector,tiler,BFMatch(),SuperExtract(2048,device),device,"vpair_no_super_bf_")
 
     # test(sky_parse,MultiProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"sky_mul_sift_bf_")
