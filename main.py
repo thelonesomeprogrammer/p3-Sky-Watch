@@ -16,6 +16,10 @@ from submoduls.filter import geofilter
 from submoduls.tiler import NoLap, MOverLap, AlaaLap
 from submoduls.point_selector import ClusterSelector, TileSelector
 from submoduls.preproces import MultiProcess, NoProcess
+from submoduls.MatchVisualizer import MatchVisualizer
+#from submoduls import MatchVisualizer as MV
+
+
 
 
 def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
@@ -31,7 +35,7 @@ def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
     pred_usac = []
     pred_ransac = []
     pred_geo = []
-    for i in data_set:
+    for i in data_set[:10]:
         img = cv2.imread(pathclass.parse(i[0]))
         img = pre_proces.process(img)
         img, _ = rotate_image(img, -i[6]/math.pi*180)
@@ -39,12 +43,34 @@ def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
 
         features = extractor.extract(img)
         points = selector.select(matcher,features,img,sat_features,sat_img)
-
+        visualizer = MatchVisualizer()
 
         img_keypoints = np.asarray([[int(features.get_points()[int(t)][0]),int(features.get_points()[int(t)][1])] for t in points[:,2]], dtype=np.float32)
-    
-        
         geo_img_cords, geo_sat_cords = geofilter(img_keypoints, points[:,:2], 5, 3) ## 5 3 
+        # Apply the geofilter
+        geo_img_cords, geo_sat_cords = geofilter(img_keypoints, points[:, :2], 5, 3)
+
+        # Convert geofiltered points to keypoints
+        filtered_img_keypoints = [
+            cv2.KeyPoint(float(pt[0]), float(pt[1]), 1)
+            for pt in geo_img_cords
+        ]
+
+        filtered_sat_keypoints = [
+            cv2.KeyPoint(float(pt[0]), float(pt[1]), 1)
+            for pt in geo_sat_cords
+        ]
+
+        # Create matches for visualization
+        matches = [
+            cv2.DMatch(_queryIdx=i, _trainIdx=i, _distance=0)
+            for i in range(len(geo_img_cords))
+        ]
+
+        # Visualize filtered matches
+        visualizer.current_matches = matches
+        visualizer.visualize_matches(img, sat_img, filtered_img_keypoints, filtered_sat_keypoints, matches)
+
 
         if len(geo_img_cords) > 4:
             latlong = np.asarray(xy_to_coords(bounds, sat_res, geo_sat_cords), dtype=np.float32)
@@ -152,18 +178,18 @@ def main():
     sky_parse = ImgParser("./datasets/SkyWatchData/","0",".jpg","SatData/StovringNorthOriented.jpg")
 
     test(vpair_parse,MultiProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"vpair_mul_sift_bf_")
-    test(vpair_parse,NoProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"vpair_no_sift_bf_")
-    test(vpair_parse,MultiProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"vpair_mul_sift_light_")
-    test(vpair_parse,NoProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"vpair_no_sift_light_")
-    test(vpair_parse,NoProcess(),selector,tiler,LightMatch("superpoint",device),SuperExtract(2048,device),device,"vpair_no_super_light_")
-    test(vpair_parse,NoProcess(),selector,tiler,BFMatch(),SuperExtract(2048,device),device,"vpair_no_super_bf_")
+    # test(vpair_parse,NoProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"vpair_no_sift_bf_")
+    # test(vpair_parse,MultiProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"vpair_mul_sift_light_")
+    # test(vpair_parse,NoProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"vpair_no_sift_light_")
+    # test(vpair_parse,NoProcess(),selector,tiler,LightMatch("superpoint",device),SuperExtract(2048,device),device,"vpair_no_super_light_")
+    # test(vpair_parse,NoProcess(),selector,tiler,BFMatch(),SuperExtract(2048,device),device,"vpair_no_super_bf_")
 
-    test(sky_parse,MultiProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"sky_mul_sift_bf_")
-    test(sky_parse,NoProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"sky_no_sift_bf_")
-    test(sky_parse,MultiProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"sky_mul_sift_light_")
-    test(sky_parse,NoProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"sky_no_sift_light_")
-    test(sky_parse,NoProcess(),selector,tiler,LightMatch("superpoint",device),SuperExtract(2048,device),device,"sky_no_super_light_")
-    test(sky_parse,NoProcess(),selector,tiler,BFMatch(),SuperExtract(2048,device),device,"sky_no_super_bf_")
+    # test(sky_parse,MultiProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"sky_mul_sift_bf_")
+    # test(sky_parse,NoProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"sky_no_sift_bf_")
+    # test(sky_parse,MultiProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"sky_mul_sift_light_")
+    # test(sky_parse,NoProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"sky_no_sift_light_")
+    # test(sky_parse,NoProcess(),selector,tiler,LightMatch("superpoint",device),SuperExtract(2048,device),device,"sky_no_super_light_")
+    # test(sky_parse,NoProcess(),selector,tiler,BFMatch(),SuperExtract(2048,device),device,"sky_no_super_bf_")
 
 
 main()
