@@ -91,7 +91,6 @@ class AlaaLap:
         sat_features = []
         tiles = self.split_image_into_tile(sat_img, sat_res, self.tile_size, self.overlap)
         for tile in tiles:
-            print(tile)
             features = extractor.extract(tile[0])
             if len(features.get_points()) == 0:
                 continue
