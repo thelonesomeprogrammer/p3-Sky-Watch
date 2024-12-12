@@ -1,9 +1,6 @@
 import numpy as np
 
 
-
-
-
 def geofilter(img_points, map_points, bin_count, x):
     img_midt = np.mean(img_points, axis=0)
     map_midt = np.mean(map_points, axis=0)

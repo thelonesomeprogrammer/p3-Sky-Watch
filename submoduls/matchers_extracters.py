@@ -30,12 +30,15 @@ class BFMatch:
         self.bf = cv2.BFMatcher(crossCheck=False)
 
     def match(self, features0, features1, k = 2):
-            matches = self.bf.knnMatch(features0.to_np(), features1.to_np(), k = k)
+        matches = self.bf.knnMatch(features0.to_np(), features1.to_np(), k = k)
+        good_matches = []
+        for m, n in matches:
+            if m.distance < 0.75 * n.distance:
+                good_matches.append(m)
 
-
-            matched_kp1 = [m[0].trainIdx for m in matches]
-            matched_kp0 = [m[0].queryIdx for m in matches]
-            return matched_kp0, matched_kp1
+        matched_kp1 = [m[0].trainIdx for m in good_matches]
+        matched_kp0 = [m[0].queryIdx for m in good_matches]
+        return matched_kp0, matched_kp1
 
 class FlannMatch:
     def __init__(self, index_params = dict(algorithm=5, trees=1 ), search_params = dict(checks=50 )):
@@ -44,8 +47,13 @@ class FlannMatch:
     def match(self, features0, features1, k = 2):
         matches = self.flann.knnMatch(features0.to_np(), features1.to_np(), k = k)
 
-        matched_kp1 = [m[0].trainIdx for m in matches]
-        matched_kp0 = [m[0].queryIdx for m in matches]
+        good_matches = []
+        for m, n in matches:
+            if m.distance < 0.75 * n.distance:
+                good_matches.append(m)
+
+        matched_kp1 = [m[0].trainIdx for m in good_matches]
+        matched_kp0 = [m[0].queryIdx for m in good_matches]
         return matched_kp0, matched_kp1
 
 class SuperExtract:

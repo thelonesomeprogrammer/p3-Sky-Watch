@@ -24,15 +24,12 @@ from submoduls.MatchVisualizer import MatchVisualizer
 
 def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
     cv2.setRNGSeed(69)
-<<<<<<< HEAD
     print(device)
     extractor = SiftExtract(max_keypoints)
     matcher = FlannMatch()
     tiler = AlaaLap()
     selector = ClusterSelector()
     pre_proces = MultiProcess()
-=======
->>>>>>> 0a36f1f4cb2e246213572ac2ac0922a56feda1ba
     pnp = PnP.vpair_init()
     data_set = load_csv_to_arr(pathclass.ground())
     sat_img = cv2.imread(pathclass.sat())
@@ -75,10 +72,6 @@ def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
             print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
         else:
             pred_geo.append([int(i[0]),0,0])
-<<<<<<< HEAD
-        
-=======
->>>>>>> 0a36f1f4cb2e246213572ac2ac0922a56feda1ba
 
 
         for huhuhuh in range(3):
@@ -151,10 +144,7 @@ def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
             else:
                 pred_usac.append([int(i[0]),0,0])
                 break
-<<<<<<< HEAD
 
-=======
->>>>>>> 0a36f1f4cb2e246213572ac2ac0922a56feda1ba
 
 
         print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
