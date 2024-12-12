@@ -25,11 +25,6 @@ from submoduls.MatchVisualizer import MatchVisualizer
 def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
     cv2.setRNGSeed(69)
     print(device)
-    extractor = SiftExtract(max_keypoints)
-    matcher = FlannMatch()
-    tiler = AlaaLap()
-    selector = ClusterSelector()
-    pre_proces = MultiProcess()
     pnp = PnP.vpair_init()
     data_set = load_csv_to_arr(pathclass.ground())
     sat_img = cv2.imread(pathclass.sat())
