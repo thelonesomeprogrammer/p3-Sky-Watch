@@ -24,7 +24,7 @@ def main(data_path,max_keypoints):
     print(device)
     extractor = SiftExtract(max_keypoints)
     matcher = FlannMatch()
-    tiler = NoLap()
+    tiler = AlaaLap()
     selector = ClusterSelector()
     pre_proces = MultiProcess()
     pnp = PnP.vpair_init()
@@ -73,14 +73,14 @@ def main(data_path,max_keypoints):
                 
             print([int(i[0]),cal_dist([[int(i[0]),cam[1][0],cam[0][0]]],[[i[0],i[1],i[2]]])])
         else:
-            pred_usac.append([int(i[0]),0,0])
+            pred_geo.append([int(i[0]),0,0])
         
 
 
         for huhuhuh in range(3):
             if len(points) < 4:
                 if huhuhuh == 2:
-                    pred_usac.append([int(i[0]),0,0])
+                    pred_ransac.append([int(i[0]),0,0])
                     break
                 continue
             latlong = np.asarray(xy_to_coords(bounds, sat_res, points[:,:2]), dtype=np.float32)
@@ -125,8 +125,10 @@ def main(data_path,max_keypoints):
                     break
                 elif huhuhuh == 2:
                     pred_usac.append([int(i[0]),0,0])
+                    break
             else:
                 pred_usac.append([int(i[0]),0,0])
+                break
 
 
 

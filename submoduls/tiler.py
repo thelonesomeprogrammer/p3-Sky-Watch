@@ -28,13 +28,13 @@ class MOverLap:
                 if self.plot:
                     fig, axs = plt.subplots(2)
                     axs[0].imshow(sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj], zorder=0)
-                    axs[0].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
+                    axs[0].scatter(features.get_points()[:,0], features.get_points()[:,1], zorder=1)
                 
                 features.mv_points(i*fraci, j*fracj)
 
                 if self.plot:
                     axs[1].imshow(sat_img, zorder=0)
-                    axs[1].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
+                    axs[1].scatter(features.get_points()[:,0], features.get_points()[:,1], zorder=1)
                     plt.show()
 
                 sat_features.append([kp, des])
@@ -46,8 +46,8 @@ class NoLap:
 
     def tile(self, sat_img, sat_res, extractor):
         sat_features = []
-        fraci = int(sat_res[0]/9)
-        fracj = int(sat_res[1]/6)
+        fraci = int(sat_res[0]/6)
+        fracj = int(sat_res[1]/9)
         for i in range(9):
             for j in range(6):
                 tile = sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj]
@@ -57,20 +57,20 @@ class NoLap:
                 if self.plot:
                     fig, axs = plt.subplots(2)
                     axs[0].imshow(sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj], zorder=0)
-                    axs[0].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
+                    axs[0].scatter(features.get_points()[:,0], features.get_points()[:,1], zorder=1)
                 
                 features.mv_points(i*fraci, j*fracj)
 
                 if self.plot:
                     axs[1].imshow(sat_img, zorder=0)
-                    axs[1].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
+                    axs[1].scatter(features.get_points()[:,0], features.get_points()[:,1], zorder=1)
                     plt.show()
 
                 sat_features.append(features)
         return sat_features
 
 class AlaaLap:
-    def __init__(self, tile_size=(512, 512), overlap=128, plot = False):
+    def __init__(self, tile_size=(512, 512), overlap=128, plot = True):
         self.plot = plot
         self.tile_size = tile_size
         self.overlap = overlap
@@ -79,33 +79,33 @@ class AlaaLap:
         sat_features = []
         tiles = self.split_image_into_tile(sat_img, self.tile_size, self.overlap)
         for tile in tiles:
-            features = extractor.extract(tile.tile)
+            features = extractor.extract(tile[0])
 
 
             if self.plot:
                 fig, axs = plt.subplots(2)
-                axs[0].imshow(sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj], zorder=0)
-                axs[0].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
+                axs[0].imshow(sat_img[tile[2]:tile[2]+self.tile_size[1], tile[1]:tile[1]+self.tile_size[0]], zorder=0)
+                axs[0].scatter(features.get_points()[:,0], features.get_points()[:,1], zorder=1)
             
-            features.mv_points(i*fraci, j*fracj)
+            features.mv_points(tile[2],tile[1])
 
             if self.plot:
                 axs[1].imshow(sat_img, zorder=0)
-                axs[1].scatter(features.points()[:,0], features.points()[:,1], zorder=1)
+                axs[1].scatter(features.get_points()[:,0], features.get_points()[:,1], zorder=1)
                 plt.show()
 
             sat_features.append(features)
         return sat_features
 
 
-    def split_image_into_tile(image, tile_size, overlap):
+    def split_image_into_tile(self, image, tile_size, overlap):
         tiles = []
-        _, h, w = image.shape  # Assuming image shape is [C, H, W]
+        h, w, _ = image.shape  # Assuming image shape is [C, H, W]
         stride_x = tile_size[1] - overlap
         stride_y = tile_size[0] - overlap
         for y in range(0, h - tile_size[0] + 1, stride_y):
             for x in range(0, w - tile_size[1] + 1, stride_x):
-                tile = image[:, y:y + tile_size[0], x:x + tile_size[1]]
-                if tile.shape[1] == tile_size[0] and tile.shape[2] == tile_size[1]:
+                tile = image[y:y + tile_size[0], x:x + tile_size[1], :]
+                if tile.shape[0] == tile_size[0] and tile.shape[1] == tile_size[1]:
                     tiles.append((tile, x, y))  # Store tile with its top-left position
         return tiles
