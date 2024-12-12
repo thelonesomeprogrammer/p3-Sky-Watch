@@ -1,18 +1,19 @@
 import matplotlib.pyplot as plt
 
 class MOverLap:
-    def __init__(self, plot = False):
+    def __init__(self, plot=False):
         self.plot = plot
-
 
     def tile(self, sat_img, sat_res, extractor):
         sat_features = []
-        fraci = int(sat_res[0]/8) # 6 + 2 for overlap
-        fracj = int(sat_res[1]/12) # 9 + 3 for overlap
+        # Calculate tile steps with overlap
+        fraci = int(sat_res[0] / 8)  # Vertical size per tile
+        fracj = int(sat_res[1] / 12) # Horizontal size per tile
+
         for i in range(8):
             for j in range(12):
                 if i == 0:
-                    i_lower = i*fraci
+                    i_lower = i * fraci
                 else:
                     i_lower = int(i * fraci - fraci / 3)
 
@@ -21,10 +22,12 @@ class MOverLap:
                 else:
                     j_lower = int(j * fracj - fracj / 3)
 
-                tile = sat_img[i_lower:(i+1)*fraci, j_lower:(j+1)*fracj]
+                tile = sat_img[i_lower:(i + 1) * fraci, j_lower:(j + 1) * fracj]
+
+                # Extract features from the tile
                 features = extractor.extract(tile)
 
-
+                # Plot original tile and features
                 if self.plot:
                     fig, axs = plt.subplots(2)
                     axs[0].imshow(sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj], zorder=0)
@@ -32,16 +35,22 @@ class MOverLap:
                 
                 features.mv_points(i*fraci, j*fracj)
 
+                # Move feature points to global coordinates
+                features.mv_points(j * fracj, i * fraci)
+
+                # Plot full image with adjusted feature coordinates
                 if self.plot:
                     axs[1].imshow(sat_img, zorder=0)
                     axs[1].scatter(features.get_points()[:,0], features.get_points()[:,1], zorder=1)
                     plt.show()
 
-                sat_features.append([kp, des])
+                sat_features.append(features)
+
         return sat_features
 
+
 class NoLap:
-    def __init__(self, plot = False):
+    def __init__(self, plot=False):
         self.plot = plot
 
     def tile(self, sat_img, sat_res, extractor):
@@ -50,9 +59,8 @@ class NoLap:
         fracj = int(sat_res[1]/9)
         for i in range(9):
             for j in range(6):
-                tile = sat_img[i*fraci:(i+1)*fraci, j*fracj:(j+1)*fracj]
+                tile = sat_img[i * fraci:(i + 1) * fraci, j * fracj:(j + 1) * fracj]
                 features = extractor.extract(tile)
-
 
                 if self.plot:
                     fig, axs = plt.subplots(2)
@@ -67,10 +75,14 @@ class NoLap:
                     plt.show()
 
                 sat_features.append(features)
+
         return sat_features
 
+
+import matplotlib.pyplot as plt
+
 class AlaaLap:
-    def __init__(self, tile_size=(512, 512), overlap=128, plot = True):
+    def __init__(self, tile_size=(512, 512), overlap=128, plot = False):
         self.plot = plot
         self.tile_size = tile_size
         self.overlap = overlap

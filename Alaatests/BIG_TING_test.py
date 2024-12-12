@@ -60,8 +60,8 @@ def process_images(img1, drone_images_path_list, flight_data_csv):
 
         # Load drone image
         drone = cv2.imread(drone_image_path, cv2.IMREAD_GRAYSCALE)
-        drone = cv2.GaussianBlur(drone, (3,3), 0)
-        drone = apply_clahe(drone)
+        # drone = cv2.GaussianBlur(drone, (3,3), 0)
+        # drone = apply_clahe(drone)
 
         # Detect and compute features in drone image
         kp_drone, des_drone = sift.detectAndCompute(drone, None)
@@ -194,13 +194,12 @@ def process_images(img1, drone_images_path_list, flight_data_csv):
 
         # Plot clusters
         colors = cm.rainbow(np.linspace(0, 1, n_clusters))
-        sat_image_original_color = cv2.imread("SIFTOGB.jpg")
+        sat_image_original_color = cv2.imread("SIFTOGBF.jpg")
         plt.figure(figsize=(15, 10))
         plt.imshow(sat_image_original_color, cmap='gray')
         for label, color in zip(clusters.keys(), colors):
             cluster_points = np.array([item['point'] for item in clusters[label]])
             plt.scatter(cluster_points[:, 0], cluster_points[:, 1], color=color, s=10, label=f'Cluster {label}')
-# Annotate cluster center with confidence
             center = cluster_confidence[label]['center']
             confidence = cluster_confidence[label]['average_score']
             plt.text(center[0], center[1], f'{confidence:.2f}', color='white', fontsize=12, ha='center', va='center')
@@ -215,7 +214,7 @@ def process_images(img1, drone_images_path_list, flight_data_csv):
 if __name__ == "__main__":
     satellite_image_path = "SIFTOGB.jpg"  # Replace with your satellite image path
     drone_images_path_list = [
-        "vpair\\00359.png",
+        "00359.png",
         # "vpair\\00367.png",
         # "vpair\\00368.png",
         # "vpair\\00369.png",
