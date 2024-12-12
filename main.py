@@ -24,7 +24,6 @@ from submoduls.MatchVisualizer import MatchVisualizer
 
 def test(pathclass,pre_proces,selector,tiler,matcher,extractor,device,csv_pre):
     cv2.setRNGSeed(69)
-    print(device)
     pnp = PnP.vpair_init()
     data_set = load_csv_to_arr(pathclass.ground())
     sat_img = cv2.imread(pathclass.sat())
@@ -176,16 +175,16 @@ class ImgParser():
 def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
-    tiler = NoLap()
+    tiler = AlaaLap()
     selector = TileSelector()
     vpair_parse = ImgParser("./datasets/vpair/","",".png","SatData/vpair final 2.jpg")
     sky_parse = ImgParser("./datasets/SkyWatchData/","0",".jpg","SatData/StovringNorthOriented.jpg")
 
-    test(vpair_parse,MultiProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"vpair_mul_sift_bf_")
+    test(vpair_parse, MultiProcess(), selector, tiler, BFMatch(), SiftExtract(2048),device,"vpair_mul_sift_bf_")
     # test(vpair_parse,NoProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"vpair_no_sift_bf_")
     # test(vpair_parse,MultiProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"vpair_mul_sift_light_")
     # test(vpair_parse,NoProcess(),selector,tiler,LightMatch("sift",device),SiftExtract(2048),device,"vpair_no_sift_light_")
-    #test(vpair_parse,NoProcess(),selector,tiler,LightMatch("superpoint",device),SuperExtract(2048,device),device,"vpair_no_super_light_")
+    # test(vpair_parse,NoProcess(),selector,tiler,LightMatch("superpoint",device),SuperExtract(2048,device),device,"vpair_no_super_light_")
     # test(vpair_parse,NoProcess(),selector,tiler,BFMatch(),SuperExtract(2048,device),device,"vpair_no_super_bf_")
 
     # test(sky_parse,MultiProcess(),selector,tiler,BFMatch(),SiftExtract(2048),device,"sky_mul_sift_bf_")

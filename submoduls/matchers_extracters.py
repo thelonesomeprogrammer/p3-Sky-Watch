@@ -36,8 +36,8 @@ class BFMatch:
             if m.distance < 0.75 * n.distance:
                 good_matches.append(m)
 
-        matched_kp1 = [m[0].trainIdx for m in good_matches]
-        matched_kp0 = [m[0].queryIdx for m in good_matches]
+        matched_kp1 = [m.trainIdx for m in good_matches]
+        matched_kp0 = [m.queryIdx for m in good_matches]
         return matched_kp0, matched_kp1
 
 class FlannMatch:
